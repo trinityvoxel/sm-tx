@@ -126,17 +126,17 @@ export default function EventDetail() {
 
             {/* Badges */}
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
-              {event.kid_friendly && (
+              {!!event.kid_friendly && (
                 <span style={{ fontSize: '0.82rem', background: '#d1fae5', color: '#065f46', borderRadius: 20, padding: '0.3rem 0.75rem', fontWeight: 500 }}>
                   👦 Kid-friendly
                 </span>
               )}
-              {event.pet_friendly && (
+              {!!event.pet_friendly && (
                 <span style={{ fontSize: '0.82rem', background: '#fef3c7', color: '#92400e', borderRadius: 20, padding: '0.3rem 0.75rem', fontWeight: 500 }}>
                   🐾 Pet-friendly
                 </span>
               )}
-              {event.age_21_plus && (
+              {!!event.age_21_plus && (
                 <span style={{ fontSize: '0.82rem', background: '#fee2e2', color: '#991b1b', borderRadius: 20, padding: '0.3rem 0.75rem', fontWeight: 500 }}>
                   🔞 21+ Only
                 </span>

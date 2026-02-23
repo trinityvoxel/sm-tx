@@ -5,6 +5,19 @@ import { API, CATEGORIES, CATEGORY_COLORS, CATEGORY_LABELS } from '../constants.
 const RIVERBEND_PHOTO = 'https://hostaway-platform.s3.us-west-2.amazonaws.com/listing/87999-297530-DcPs67WuOwB5o7P5GqtCvFN32E8cRhwrrp8RMIlPoa8-68efd79c87e31';
 const RIVERBEND_URL = 'https://stay.cohostr.com/san-marcos/';
 
+const CATEGORY_PHOTOS = {
+  music:    'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400&h=120&fit=crop&q=70',
+  sports:   'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=400&h=120&fit=crop&q=70',
+  arts:     'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=400&h=120&fit=crop&q=70',
+  nightlife:'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=120&fit=crop&q=70',
+  markets:  'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=400&h=120&fit=crop&q=70',
+  food:     'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=120&fit=crop&q=70',
+  outdoor:  'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=400&h=120&fit=crop&q=70',
+  festivals:'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=400&h=120&fit=crop&q=70',
+  community:'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400&h=120&fit=crop&q=70',
+  other:    'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=400&h=120&fit=crop&q=70',
+};
+
 function formatDate(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr + 'T12:00:00');
@@ -14,6 +27,7 @@ function formatDate(dateStr) {
 function EventCard({ event }) {
   const color = CATEGORY_COLORS[event.category] || '#6b7280';
   const label = CATEGORY_LABELS[event.category] || event.category;
+  const photo = CATEGORY_PHOTOS[event.category] || CATEGORY_PHOTOS.other;
   const dateStr = event.date_end && event.date_end !== event.date_start
     ? `${formatDate(event.date_start)} – ${formatDate(event.date_end)}`
     : formatDate(event.date_start);
@@ -24,40 +38,78 @@ function EventCard({ event }) {
         style={{
           background: '#fff',
           border: '1px solid #e5e7eb',
-          borderRadius: 12,
-          padding: '1rem 1.25rem',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+          borderRadius: 14,
+          overflow: 'hidden',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
           transition: 'box-shadow 0.15s, transform 0.15s',
           cursor: 'pointer',
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          gap: '0.5rem'
         }}
-        onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-        onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)'; e.currentTarget.style.transform = 'none'; }}
+        onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.1)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+        onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)'; e.currentTarget.style.transform = 'none'; }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
-          <h3 style={{ fontWeight: 600, fontSize: '1rem', lineHeight: 1.3, color: '#1a1a2e', flex: 1 }}>
-            {event.name}
-          </h3>
+        {/* Category photo header */}
+        <div style={{ position: 'relative', height: 120, overflow: 'hidden', flexShrink: 0 }}>
+          <img
+            src={photo}
+            alt={label}
+            loading="lazy"
+            style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }}
+          />
+          {/* Category pill overlay */}
           <span style={{
-            background: color + '18', color, border: `1px solid ${color}40`,
-            borderRadius: 20, padding: '0.2rem 0.6rem',
-            fontSize: '0.72rem', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0
+            position: 'absolute', top: 8, left: 8,
+            background: color,
+            color: '#fff',
+            borderRadius: 20,
+            padding: '3px 9px',
+            fontSize: '0.68rem',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.6px',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
           }}>
             {label}
           </span>
+          {/* 21+ badge */}
+          {!!event.age_21_plus && (
+            <span style={{
+              position: 'absolute', top: 8, right: 8,
+              background: 'rgba(153,27,27,0.85)',
+              color: '#fff',
+              borderRadius: 20,
+              padding: '3px 8px',
+              fontSize: '0.68rem',
+              fontWeight: 700,
+            }}>🔞 21+</span>
+          )}
         </div>
-        <div style={{ fontSize: '0.875rem', color: '#4b5563' }}>
-          📅 {dateStr}{event.time ? ` · ${event.time}` : ''}
-        </div>
-        <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>📍 {event.venue_name}</div>
-        {event.cost && <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>🎟 {event.cost}</div>}
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '0.25rem' }}>
-          {event.kid_friendly && <span style={{ fontSize: '0.75rem', background: '#d1fae5', color: '#065f46', borderRadius: 20, padding: '0.15rem 0.5rem' }}>👦 Kid-friendly</span>}
-          {event.pet_friendly && <span style={{ fontSize: '0.75rem', background: '#fef3c7', color: '#92400e', borderRadius: 20, padding: '0.15rem 0.5rem' }}>🐾 Pet-friendly</span>}
-          {event.age_21_plus && <span style={{ fontSize: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 20, padding: '0.15rem 0.5rem' }}>🔞 21+</span>}
+
+        {/* Card body */}
+        <div style={{ padding: '0.85rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1 }}>
+          <h3 style={{ fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.3, color: '#1a1a2e' }}>
+            {event.name}
+          </h3>
+          <div style={{ fontSize: '0.82rem', color: '#4b5563' }}>
+            📅 {dateStr}{event.time ? ` · ${event.time}` : ''}
+          </div>
+          <div style={{ fontSize: '0.82rem', color: '#6b7280' }}>
+            📍 {event.venue_name}
+          </div>
+          {event.cost && event.cost !== 'free' && (
+            <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>🎟 {event.cost}</div>
+          )}
+          {/* Tags — fixed boolean coercion (D1 returns 0/1 integers, not booleans) */}
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '0.35rem' }}>
+            {!!event.kid_friendly && (
+              <span style={{ fontSize: '0.72rem', background: '#d1fae5', color: '#065f46', borderRadius: 20, padding: '0.15rem 0.5rem' }}>👦 Kid-friendly</span>
+            )}
+            {!!event.pet_friendly && (
+              <span style={{ fontSize: '0.72rem', background: '#fef3c7', color: '#92400e', borderRadius: 20, padding: '0.15rem 0.5rem' }}>🐾 Pet-friendly</span>
+            )}
+          </div>
         </div>
       </div>
     </Link>
@@ -114,7 +166,6 @@ export default function Home() {
 
       {/* ── HERO ── */}
       <div style={{
-        position: 'relative',
         backgroundImage: `
           linear-gradient(180deg, rgba(2,20,18,0.52) 0%, rgba(4,47,46,0.38) 55%, rgba(4,47,46,0.65) 100%),
           url('/rio-vista-hero.jpg')
@@ -127,13 +178,10 @@ export default function Home() {
       }}>
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
 
-          {/* Title */}
           <h1 style={{
             fontSize: 'clamp(2rem, 5.5vw, 3.2rem)',
-            fontWeight: 900,
-            lineHeight: 1.1,
-            marginBottom: '0.6rem',
-            letterSpacing: '-1px',
+            fontWeight: 900, lineHeight: 1.1,
+            marginBottom: '0.6rem', letterSpacing: '-1px',
             textShadow: '0 2px 20px rgba(0,0,0,0.45)'
           }}>
             Everything happening in<br />
@@ -147,15 +195,10 @@ export default function Home() {
           <form onSubmit={handleSearch} style={{
             background: 'rgba(255,255,255,0.12)',
             border: '1px solid rgba(255,255,255,0.22)',
-            borderRadius: 14,
-            padding: '1rem 1.25rem',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '0.75rem',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backdropFilter: 'blur(10px)',
-            marginBottom: '1rem',
+            borderRadius: 14, padding: '1rem 1.25rem',
+            display: 'flex', flexWrap: 'wrap', gap: '0.75rem',
+            alignItems: 'center', justifyContent: 'center',
+            backdropFilter: 'blur(10px)', marginBottom: '1rem',
           }}>
             <span style={{ fontSize: '0.9rem', opacity: 0.9 }}>🗓 Planning a visit?</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -179,58 +222,77 @@ export default function Home() {
             )}
           </form>
 
-          {/* Riverbend Hideaway — in-hero CTA */}
-          <a href={RIVERBEND_URL} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+          {/* ── Riverbend Hideaway — Option C banner ── */}
+          <a href={RIVERBEND_URL} target="_blank" rel="noopener noreferrer"
+            style={{ textDecoration: 'none', display: 'block' }}
+          >
             <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.9rem',
-              background: 'rgba(0,0,0,0.38)',
+              borderRadius: 16, overflow: 'hidden',
               border: '1px solid rgba(94,234,212,0.35)',
-              borderRadius: 12,
-              padding: '0.75rem 1rem',
-              backdropFilter: 'blur(8px)',
-              cursor: 'pointer',
-              transition: 'background 0.15s',
-              textAlign: 'left',
+              boxShadow: '0 6px 28px rgba(0,0,0,0.45)',
+              cursor: 'pointer', transition: 'transform 0.15s',
+              background: 'rgba(0,0,0,0.5)',
             }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.52)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.38)'}
+              onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'none'}
             >
-              <img
-                src={RIVERBEND_PHOTO}
-                alt="Riverbend Hideaway"
-                style={{ width: 80, height: 58, borderRadius: 8, objectFit: 'cover', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}
-              />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', color: '#5eead4', marginBottom: 2 }}>
-                  Need a place to stay?
+              {/* Photo with overlays */}
+              <div style={{ position: 'relative', height: 160 }}>
+                <img
+                  src={RIVERBEND_PHOTO}
+                  alt="Riverbend Hideaway"
+                  style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }}
+                />
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  background: 'linear-gradient(transparent 40%, rgba(0,0,0,0.55) 100%)'
+                }} />
+                {/* Badge top-left */}
+                <div style={{
+                  position: 'absolute', top: 10, left: 12, zIndex: 1,
+                  background: '#0d9488', color: '#fff',
+                  fontSize: '0.68rem', fontWeight: 800,
+                  textTransform: 'uppercase', letterSpacing: '1px',
+                  borderRadius: 6, padding: '3px 9px'
+                }}>
+                  Need a place to stay in San Marcos?
                 </div>
-                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#fff', marginBottom: 2 }}>
+                {/* Property name bottom-left */}
+                <div style={{
+                  position: 'absolute', bottom: 10, left: 12, right: 12, zIndex: 1,
+                  fontSize: '1.25rem', fontWeight: 900, color: '#fff',
+                  textShadow: '0 1px 6px rgba(0,0,0,0.5)'
+                }}>
                   Riverbend Hideaway
                 </div>
-                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.7)' }}>
-                  Blanco River · Sleeps up to 12 · Book direct, skip the OTA fees
-                </div>
               </div>
+              {/* Bottom strip */}
               <div style={{
-                background: '#0d9488', color: '#fff', borderRadius: 8,
-                padding: '0.45rem 0.9rem', fontSize: '0.8rem', fontWeight: 700,
-                flexShrink: 0, whiteSpace: 'nowrap'
+                padding: '0.9rem 1.1rem',
+                display: 'flex', alignItems: 'center',
+                gap: '1rem', justifyContent: 'space-between'
               }}>
-                Book Direct →
+                <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.75)', lineHeight: 1.4 }}>
+                  Blanco River Farmhouse · Sleeps up to 12 · Book direct and skip the Airbnb fees
+                </div>
+                <div style={{
+                  background: '#0d9488', color: '#fff', borderRadius: 9,
+                  padding: '0.6rem 1.2rem', fontSize: '0.9rem', fontWeight: 700,
+                  whiteSpace: 'nowrap', flexShrink: 0
+                }}>
+                  Book Direct →
+                </div>
               </div>
             </div>
           </a>
+
         </div>
       </div>
 
-      {/* Wave separator */}
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 60" preserveAspectRatio="none"
-        style={{ display: 'block', marginTop: -2, background: '#f0fdfa' }}>
-        <path fill="#f0fdfa" d="M0,30 C360,60 1080,0 1440,30 L1440,60 L0,60 Z"
-          style={{ fill: '#f0fdfa' }} />
-        <rect width="1440" height="30" fill="transparent" />
+      {/* Wave */}
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 50" preserveAspectRatio="none"
+        style={{ display: 'block', marginTop: -1 }}>
+        <path fill="#f0fdfa" d="M0,25 C360,50 1080,0 1440,25 L1440,50 L0,50 Z" />
       </svg>
 
       {/* ── MAIN CONTENT ── */}
@@ -282,7 +344,7 @@ export default function Home() {
             </button>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
             {events.map(event => <EventCard key={event.id} event={event} />)}
           </div>
         )}
