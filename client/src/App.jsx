@@ -6,7 +6,7 @@ import EventDetail from './pages/EventDetail.jsx';
 import Submit from './pages/Submit.jsx';
 
 const navStyle = {
-  background: '#051e33',
+  background: '#042f2e',
   color: '#fff',
   padding: '0 0',
   position: 'sticky',

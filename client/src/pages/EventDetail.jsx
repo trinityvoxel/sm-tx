@@ -188,7 +188,7 @@ export default function EventDetail() {
         {/* Riverbend CTA */}
         <div style={{
           marginTop: '1.5rem',
-          background: '#051e33',
+          background: '#042f2e',
           color: '#fff',
           borderRadius: 12,
           padding: '1.25rem 1.5rem',
