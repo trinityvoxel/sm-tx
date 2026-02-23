@@ -4,12 +4,38 @@ import { API, CATEGORY_COLORS, CATEGORY_LABELS } from '../constants.js';
 
 function cleanDescription(html) {
   if (!html) return '';
-  return html
-    .replace(/<img[^>]*>/gi, '')                        // strip inline images
-    .replace(/<a\s[^>]*href="(?!https?)[^"]*"[^>]*>(.*?)<\/a>/gi, '$1') // strip relative links
-    .replace(/(<br\s*\/?>\s*){2,}/gi, '<br/>')          // collapse multiple <br> into one
-    .replace(/^(<br\s*\/?>\s*)+|(<br\s*\/?>\s*)+$/gi, '') // strip leading/trailing <br>
-    .trim();
+  let s = html;
+
+  // Strip inline images
+  s = s.replace(/<img[^>]*>/gi, '');
+
+  // Strip tab characters inside list items (Trumba artifact)
+  s = s.replace(/\t/g, '');
+
+  // Strip the TXST metadata block at the bottom — everything from the first
+  // metadata label (<b>Campus Location</b>, <b>Audience</b>, <b>Event Type</b>, etc.)
+  s = s.replace(/<b>(?:Campus Location|Location|Room|Audience|Event Type|Cost|Sponsor|Contact|More info)<\/b>[\s\S]*/i, '');
+
+  // Strip leading date/location line(s) — e.g. "McCoy Hall Room 431 <br/>Monday, Feb 23..."
+  // Pattern: text with no <p>/<ul> tags followed by a <br/> — strip up to 2 leading lines
+  s = s.replace(/^([^<]{0,100}<br\s*\/?>\s*){1,2}/i, '');
+
+  // Convert <br/> between block-level content into paragraph breaks
+  s = s.replace(/(<br\s*\/?>\s*){2,}/gi, '</p><p>');
+  s = s.replace(/<br\s*\/?>/gi, '<br/>');
+
+  // Wrap in paragraph if not already wrapped
+  if (!/^<[ph\d]|^<ul|^<ol/i.test(s.trim())) {
+    s = `<p>${s}</p>`;
+  }
+
+  // Strip relative links, keep text
+  s = s.replace(/<a\s[^>]*href="(?!https?)[^"]*"[^>]*>(.*?)<\/a>/gi, '$1');
+
+  // Strip leading/trailing empty paragraphs
+  s = s.replace(/^(<p>\s*<\/p>)+|(<p>\s*<\/p>)+$/gi, '');
+
+  return s.trim();
 }
 
 function formatDateFull(dateStr) {
@@ -156,9 +182,10 @@ export default function EventDetail() {
             {/* Description */}
             {event.description && (
               <div
+                className="event-description"
                 style={{
-                  background: '#f9fafb', borderRadius: 8, padding: '1rem',
-                  fontSize: '0.95rem', lineHeight: 1.7, color: '#374151', marginBottom: '1.25rem',
+                  background: '#f9fafb', borderRadius: 8, padding: '1rem 1.25rem',
+                  fontSize: '0.95rem', lineHeight: 1.75, color: '#374151', marginBottom: '1.25rem',
                   border: '1px solid #f3f4f6'
                 }}
                 dangerouslySetInnerHTML={{ __html: cleanDescription(event.description) }}

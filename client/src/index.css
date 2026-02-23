@@ -53,3 +53,28 @@ input, select, textarea {
     padding: 0 1.5rem;
   }
 }
+
+/* Event description prose styles */
+.event-description p {
+  margin: 0 0 0.85em;
+}
+.event-description p:last-child {
+  margin-bottom: 0;
+}
+.event-description ul,
+.event-description ol {
+  margin: 0.5em 0 0.85em 1.5rem;
+  padding: 0;
+}
+.event-description li {
+  margin-bottom: 0.3em;
+}
+.event-description strong,
+.event-description b {
+  font-weight: 600;
+  color: #1f2937;
+}
+.event-description a {
+  color: #0e8c8c;
+  text-decoration: underline;
+}
