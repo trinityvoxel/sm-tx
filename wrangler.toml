@@ -5,7 +5,7 @@ pages_build_output_dir = "client/dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "sm-tx-events"
-database_id = "PLACEHOLDER_REPLACE_AFTER_D1_CREATE"
+database_id = "3c83f9e8-f37c-4d76-9548-a085f7892ade"
 
 [vars]
 API_KEY = "smtx-internal-2026"
