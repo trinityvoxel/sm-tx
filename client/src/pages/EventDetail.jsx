@@ -2,6 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { API, CATEGORY_COLORS, CATEGORY_LABELS } from '../constants.js';
 
+function cleanDescription(html) {
+  if (!html) return '';
+  return html
+    .replace(/<img[^>]*>/gi, '')           // strip inline images
+    .replace(/<a\s[^>]*href="(?!https?)[^"]*"[^>]*>(.*?)<\/a>/gi, '$1') // strip relative links
+    .trim();
+}
+
 function formatDateFull(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr + 'T12:00:00');
@@ -145,13 +153,14 @@ export default function EventDetail() {
 
             {/* Description */}
             {event.description && (
-              <div style={{
-                background: '#f9fafb', borderRadius: 8, padding: '1rem',
-                fontSize: '0.95rem', lineHeight: 1.7, color: '#374151', marginBottom: '1.25rem',
-                border: '1px solid #f3f4f6'
-              }}>
-                {event.description}
-              </div>
+              <div
+                style={{
+                  background: '#f9fafb', borderRadius: 8, padding: '1rem',
+                  fontSize: '0.95rem', lineHeight: 1.7, color: '#374151', marginBottom: '1.25rem',
+                  border: '1px solid #f3f4f6'
+                }}
+                dangerouslySetInnerHTML={{ __html: cleanDescription(event.description) }}
+              />
             )}
 
             {/* Action buttons */}
