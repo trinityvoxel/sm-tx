@@ -216,7 +216,7 @@ export default function EventDetail() {
             </div>
           </div>
           <a
-            href="https://stay.cohostr.com/san-marcos/"
+            href="https://www.cohostr.com/listings/297530"
             target="_blank"
             rel="noopener noreferrer"
             style={{

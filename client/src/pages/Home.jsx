@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { API, CATEGORIES, CATEGORY_COLORS, CATEGORY_LABELS } from '../constants.js';
 
 const RIVERBEND_PHOTO = 'https://hostaway-platform.s3.us-west-2.amazonaws.com/listing/87999-297530-DcPs67WuOwB5o7P5GqtCvFN32E8cRhwrrp8RMIlPoa8-68efd79c87e31';
-const RIVERBEND_URL = 'https://stay.cohostr.com/san-marcos/';
+const RIVERBEND_URL = 'https://www.cohostr.com/listings/297530';
 
 const CATEGORY_PHOTOS = {
   music:    'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400&h=120&fit=crop&q=70',
@@ -375,7 +375,7 @@ export default function Home() {
         <span>🏡 Staying in San Marcos? Riverbend Hideaway sleeps up to 12 on the Blanco River —</span>
         <a href={RIVERBEND_URL} target="_blank" rel="noopener noreferrer"
           style={{ color: '#5eead4', fontWeight: 700, textDecoration: 'none', borderBottom: '1px solid #5eead4' }}>
-          book direct at stay.cohostr.com/san-marcos/ →
+          book direct at cohostr.com →
         </a>
       </div>
     </div>
