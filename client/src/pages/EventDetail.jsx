@@ -5,8 +5,10 @@ import { API, CATEGORY_COLORS, CATEGORY_LABELS } from '../constants.js';
 function cleanDescription(html) {
   if (!html) return '';
   return html
-    .replace(/<img[^>]*>/gi, '')           // strip inline images
+    .replace(/<img[^>]*>/gi, '')                        // strip inline images
     .replace(/<a\s[^>]*href="(?!https?)[^"]*"[^>]*>(.*?)<\/a>/gi, '$1') // strip relative links
+    .replace(/(<br\s*\/?>\s*){2,}/gi, '<br/>')          // collapse multiple <br> into one
+    .replace(/^(<br\s*\/?>\s*)+|(<br\s*\/?>\s*)+$/gi, '') // strip leading/trailing <br>
     .trim();
 }
 
