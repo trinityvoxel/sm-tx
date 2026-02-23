@@ -64,7 +64,7 @@ export default function App() {
       <nav style={navStyle}>
         <div style={innerNav}>
           <Link to="/" style={logoStyle}>
-            <span>🌊</span>
+            <span>🧜‍♀️</span>
             <span>SM-TX</span>
           </Link>
           <NavLink to="/">Events</NavLink>
