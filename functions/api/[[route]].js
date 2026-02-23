@@ -132,6 +132,31 @@ export async function onRequest(context) {
         body.submitter_name, body.submitter_email,
         now, now
       ).run();
+      // Notify Andrew via Telegram (fire-and-forget — don't block the response)
+      if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
+        const dateStr = body.date_start + (body.time ? ` @ ${body.time}` : '');
+        const msg = [
+          `📅 *New Event Submission — sm-tx.com*`,
+          ``,
+          `*${body.name}*`,
+          `📍 ${body.venue_name}`,
+          `🗓 ${dateStr}`,
+          `🏷 ${body.category}${body.cost && body.cost !== 'free' ? ` · ${body.cost}` : ' · free'}`,
+          ``,
+          `Submitted by: ${body.submitter_name} (${body.submitter_email})`,
+          ``,
+          `Review & approve at: https://sm\\-tx\\.com/api/events/pending`,
+        ].join('\n');
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: env.TELEGRAM_CHAT_ID,
+            text: msg,
+            parse_mode: 'MarkdownV2',
+          }),
+        }).catch(() => {}); // swallow errors — notification is best-effort
+      }
       return json({ id, status: 'pending', message: 'Event submitted for review.' }, 201);
     } catch (e) {
       return err(e.message, 500);
