@@ -1,4 +1,4 @@
-export const API = 'http://localhost:18793/api';
+export const API = '/api';
 export const CATEGORIES = ['music','food','outdoor','arts','sports','markets','festivals','community','nightlife','other'];
 export const CATEGORY_COLORS = {
   music: '#8b5cf6',

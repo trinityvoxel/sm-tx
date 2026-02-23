@@ -1,0 +1,11 @@
+name = "sm-tx"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "client/dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "sm-tx-events"
+database_id = "PLACEHOLDER_REPLACE_AFTER_D1_CREATE"
+
+[vars]
+API_KEY = "smtx-internal-2026"
