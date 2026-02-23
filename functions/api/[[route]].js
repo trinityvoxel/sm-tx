@@ -24,6 +24,38 @@ function isAuthed(request, env) {
   return request.headers.get('X-SM-TX-Key') === env.API_KEY;
 }
 
+function htmlPage(title, emoji, body, color = '#10b981') {
+  return new Response(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${title} — SM-TX Events</title>
+  <style>
+    body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f9fafb}
+    .card{background:#fff;border-radius:12px;padding:2rem 2.5rem;text-align:center;box-shadow:0 2px 20px rgba(0,0,0,.08);max-width:400px;width:90%}
+    .emoji{font-size:3rem;margin-bottom:.75rem}
+    h1{color:${color};margin:0 0 .5rem;font-size:1.4rem}
+    p{color:#6b7280;margin:.5rem 0;line-height:1.6}
+    a{color:#0e8c8c;text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="emoji">${emoji}</div>
+    <h1>${title}</h1>
+    ${body}
+    <p style="margin-top:1.25rem"><a href="https://sm-tx.com">← sm-tx.com</a></p>
+  </div>
+</body>
+</html>`, { headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
+}
+
+function esc(str) {
+  // Escape HTML special chars for Telegram HTML mode
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 /** Parse /api/events or /api/events/submit or /api/events/:id */
 function parsePath(url) {
   const path = new URL(url).pathname;
@@ -135,17 +167,19 @@ export async function onRequest(context) {
       // Notify Andrew via Telegram (fire-and-forget — don't block the response)
       if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
         const dateStr = body.date_start + (body.time ? ` @ ${body.time}` : '');
+        const approveUrl = `https://sm-tx.com/api/admin/events/${id}/approve?key=${env.API_KEY}`;
+        const rejectUrl  = `https://sm-tx.com/api/admin/events/${id}/reject?key=${env.API_KEY}`;
         const msg = [
-          `📅 *New Event Submission — sm-tx.com*`,
+          `📅 <b>New Event Submission — sm-tx.com</b>`,
           ``,
-          `*${body.name}*`,
-          `📍 ${body.venue_name}`,
-          `🗓 ${dateStr}`,
-          `🏷 ${body.category}${body.cost && body.cost !== 'free' ? ` · ${body.cost}` : ' · free'}`,
+          `<b>${esc(body.name)}</b>`,
+          `📍 ${esc(body.venue_name)}`,
+          `🗓 ${esc(dateStr)}`,
+          `🏷 ${esc(body.category)}${body.cost && body.cost !== 'free' ? ` · ${esc(body.cost)}` : ' · free'}`,
           ``,
-          `Submitted by: ${body.submitter_name} (${body.submitter_email})`,
+          `Submitted by: ${esc(body.submitter_name)} (${esc(body.submitter_email)})`,
           ``,
-          `Review & approve at: https://sm\\-tx\\.com/api/events/pending`,
+          `<a href="${approveUrl}">✅ Approve</a>   <a href="${rejectUrl}">🗑 Reject</a>`,
         ].join('\n');
         fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
           method: 'POST',
@@ -153,9 +187,9 @@ export async function onRequest(context) {
           body: JSON.stringify({
             chat_id: env.TELEGRAM_CHAT_ID,
             text: msg,
-            parse_mode: 'MarkdownV2',
+            parse_mode: 'HTML',
           }),
-        }).catch(() => {}); // swallow errors — notification is best-effort
+        }).catch(() => {});
       }
       return json({ id, status: 'pending', message: 'Event submitted for review.' }, 201);
     } catch (e) {
@@ -270,6 +304,42 @@ export async function onRequest(context) {
       return json({ inserted: inserted.length, skipped: skipped.length, details: { inserted, skipped } }, 201);
     } catch (e) {
       return err(e.message, 500);
+    }
+  }
+
+  // ── GET /api/admin/events/:id/approve|reject?key=... ─────────────────────
+  // One-tap approve/reject links sent in Telegram notifications.
+  const actionMatch = rest.match(/^\/admin\/events\/([^/]+)\/(approve|reject)$/);
+  if (method === 'GET' && actionMatch) {
+    if (params.get('key') !== env.API_KEY) {
+      return htmlPage('Unauthorized', '🚫', '<p>Invalid or expired link.</p>', '#ef4444');
+    }
+    const [, evtId, action] = actionMatch;
+    try {
+      const event = await env.DB.prepare('SELECT * FROM events WHERE id = ?').bind(evtId).first();
+      if (!event) {
+        return htmlPage('Not Found', '🤷', '<p>This event no longer exists — it may have already been reviewed.</p>', '#6b7280');
+      }
+      if (action === 'approve') {
+        await env.DB.prepare("UPDATE events SET status = 'approved', updated_at = ? WHERE id = ?")
+          .bind(new Date().toISOString(), evtId).run();
+        return htmlPage(
+          'Event Approved',
+          '✅',
+          `<p><strong>${esc(event.name)}</strong> is now live on sm-tx.com.</p>`,
+          '#10b981'
+        );
+      } else {
+        await env.DB.prepare('DELETE FROM events WHERE id = ?').bind(evtId).run();
+        return htmlPage(
+          'Event Rejected',
+          '🗑️',
+          `<p><strong>${esc(event.name)}</strong> has been removed.</p>`,
+          '#ef4444'
+        );
+      }
+    } catch (e) {
+      return htmlPage('Error', '⚠️', `<p>${esc(e.message)}</p>`, '#f59e0b');
     }
   }
 
