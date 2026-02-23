@@ -192,5 +192,61 @@ export async function onRequest(context) {
     }
   }
 
+  // ── POST /api/admin/import ────────────────────────────────────────────────
+  // Bulk import scraped events (auto-approved). Auth required.
+  // Body: { events: [ { name, date_start, venue_name, venue_address, category, ... } ] }
+  if (method === 'POST' && rest === '/admin/import') {
+    if (!isAuthed(request, env)) return err('Unauthorized', 401);
+    try {
+      const body = await request.json();
+      if (!Array.isArray(body.events) || body.events.length === 0) {
+        return err('events array required');
+      }
+      const now = new Date().toISOString();
+      const inserted = [];
+      const skipped = [];
+      for (const evt of body.events) {
+        if (!evt.name || !evt.date_start || !evt.venue_name || !evt.venue_address || !evt.category) {
+          skipped.push({ reason: 'missing required field', event: evt.name || '(unnamed)' });
+          continue;
+        }
+        // Skip past events
+        if (evt.date_start < new Date().toISOString().slice(0, 10)) {
+          skipped.push({ reason: 'past event', event: evt.name });
+          continue;
+        }
+        // Deduplicate by name + date_start
+        const existing = await env.DB.prepare(
+          'SELECT id FROM events WHERE name = ? AND date_start = ?'
+        ).bind(evt.name, evt.date_start).first();
+        if (existing) {
+          skipped.push({ reason: 'duplicate', event: evt.name });
+          continue;
+        }
+        const id = 'evt-' + Math.random().toString(36).slice(2, 10);
+        await env.DB.prepare(`
+          INSERT INTO events (
+            id, source, status, name, date_start, date_end, time,
+            venue_name, venue_address, category, description, url, cost,
+            kid_friendly, pet_friendly, age_21_plus,
+            submitter_name, submitter_email, created_at, updated_at
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        `).bind(
+          id, evt.source || 'scraped', 'approved',
+          evt.name, evt.date_start, evt.date_end || null, evt.time || null,
+          evt.venue_name, evt.venue_address, evt.category,
+          evt.description || null, evt.url || null, evt.cost || 'free',
+          evt.kid_friendly ? 1 : 0, evt.pet_friendly ? 1 : 0, evt.age_21_plus ? 1 : 0,
+          null, null,
+          now, now
+        ).run();
+        inserted.push({ id, name: evt.name });
+      }
+      return json({ inserted: inserted.length, skipped: skipped.length, details: { inserted, skipped } }, 201);
+    } catch (e) {
+      return err(e.message, 500);
+    }
+  }
+
   return err('Not found', 404);
 }
