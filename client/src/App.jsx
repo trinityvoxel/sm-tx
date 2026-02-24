@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import Home from './pages/Home.jsx';
 import Calendar from './pages/Calendar.jsx';
@@ -58,6 +58,14 @@ function NavLink({ to, children }) {
   );
 }
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
 function Footer() {
   return (
     <footer style={{
@@ -100,6 +108,7 @@ function Footer() {
 export default function App() {
   return (
     <>
+      <ScrollToTop />
       <nav style={navStyle}>
         <div style={innerNav}>
           <Link to="/" style={logoStyle}>
