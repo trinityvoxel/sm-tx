@@ -11,8 +11,6 @@ const CATEGORY_PHOTOS = {
   arts:     'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=400&h=120&fit=crop&q=70',
   nightlife:'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=120&fit=crop&q=70',
   markets:  'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=400&h=120&fit=crop&q=70',
-  food:     'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=120&fit=crop&q=70',
-  outdoor:  'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=400&h=120&fit=crop&q=70',
   festivals:'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=400&h=120&fit=crop&q=70',
   community:'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400&h=120&fit=crop&q=70',
   other:    'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=400&h=120&fit=crop&q=70',
@@ -188,7 +186,7 @@ export default function Home() {
             <span style={{ color: '#5eead4' }}>San Marcos</span>
           </h1>
           <p style={{ fontSize: '1.1rem', opacity: 0.88, marginBottom: '1.75rem', textShadow: '0 1px 8px rgba(0,0,0,0.4)' }}>
-            Music. Food. Festivals. Markets. All in one place.
+            Music. Events. Festivals. Markets. All in one place.
           </p>
 
           {/* Date picker */}
