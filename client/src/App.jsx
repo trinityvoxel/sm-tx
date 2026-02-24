@@ -18,23 +18,25 @@ const navStyle = {
 const innerNav = {
   maxWidth: 1100,
   margin: '0 auto',
-  padding: '0 1rem',
+  padding: '0 0.75rem',
   display: 'flex',
   alignItems: 'center',
-  gap: '1.5rem',
+  gap: 'clamp(0.5rem, 2vw, 1.5rem)',
   height: 56
 };
 
 const logoStyle = {
   fontWeight: 800,
-  fontSize: '1.2rem',
+  fontSize: 'clamp(0.9rem, 3vw, 1.2rem)',
   color: '#fff',
   textDecoration: 'none',
   letterSpacing: '-0.5px',
   display: 'flex',
   alignItems: 'center',
   gap: '0.3rem',
-  marginRight: '0.5rem'
+  marginRight: '0.25rem',
+  whiteSpace: 'nowrap',
+  flexShrink: 0,
 };
 
 function NavLink({ to, children }) {
@@ -47,7 +49,8 @@ function NavLink({ to, children }) {
         color: active ? '#0e8c8c' : 'rgba(255,255,255,0.8)',
         textDecoration: 'none',
         fontWeight: active ? 600 : 400,
-        fontSize: '0.95rem',
+        fontSize: 'clamp(0.72rem, 2.4vw, 0.95rem)',
+        whiteSpace: 'nowrap',
         padding: '0.25rem 0',
         borderBottom: active ? '2px solid #0e8c8c' : '2px solid transparent',
         transition: 'color 0.15s'
