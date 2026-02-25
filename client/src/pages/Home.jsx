@@ -271,7 +271,7 @@ export default function Home() {
                 gap: '1rem', justifyContent: 'space-between'
               }}>
                 <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.75)', lineHeight: 1.4 }}>
-                  Blanco River Farmhouse · Sleeps up to 12 · Book direct and skip the Airbnb fees
+                  Blanco River Farmhouse · Sleeps up to 12 · Book direct and save
                 </div>
                 <div style={{
                   background: '#0d9488', color: '#fff', borderRadius: 9,
