@@ -16,7 +16,7 @@ export default function GuideDining() {
     <>
       <Head
         title="Best Restaurants & Dining in San Marcos, TX | SM-TX"
-        description="Top restaurants, bars, and cafes in San Marcos. From riverside dining to casual tacos, here's where to eat."
+        description="Top restaurants, bars, and cafes in San Marcos. From casual tacos to fine dining, here's where to eat."
         url="https://sm-tx.com/guides/dining"
         schema={schema}
       />
@@ -42,7 +42,7 @@ export default function GuideDining() {
               Best Places to Eat in<br /><span style={{ color: '#5eead4' }}>San Marcos</span>
             </h1>
             <p style={{ fontSize: '1rem', opacity: 0.9, marginBottom: '1rem' }}>
-              From riverside dining to food trucks, local breweries to taco stands — San Marcos has something for every palate.
+              Local favorites, upscale dining, and casual eats. San Marcos has options for every taste and budget.
             </p>
           </div>
         </div>
@@ -52,68 +52,65 @@ export default function GuideDining() {
           
           <section style={{ marginBottom: '2.5rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#042f2e', marginBottom: '0.75rem' }}>
-              🍽️ Casual Dining & Local Favorites
+              🍽️ Upscale & Fine Dining
             </h2>
             <p style={{ color: '#4b5563', lineHeight: 1.8, marginBottom: '1rem' }}>
-              Quick, delicious, and authentic — these spots capture the spirit of San Marcos.
+              San Marcos has quality restaurants perfect for a special night out.
             </p>
             <ul style={{ color: '#4b5563', lineHeight: 2, paddingLeft: '1.5rem' }}>
-              <li><strong>Texas Chansey Grill</strong> — Local favorite for burgers, sandwiches, and Tex-Mex comfort food.</li>
-              <li><strong>The Grapevine</strong> — Bar and restaurant with good wings, nachos, and appetizers. Great for groups.</li>
-              <li><strong>Tantra Restaurant</strong> — Upscale casual with live music. Known for steaks and seafood.</li>
-              <li><strong>Los Molcajetes</strong> — Authentic Mexican cuisine. Try the carne asada.</li>
+              <li><strong>North Street</strong> — Contemporary American cuisine with carefully sourced ingredients. Great for date nights and celebrations.</li>
+              <li><strong>Industry</strong> — Modern dining with seasonal menus. Known for creative dishes and craft cocktails.</li>
+              <li><strong>Umami</strong> — Asian-inspired cuisine with bold flavors and an extensive drink program.</li>
             </ul>
           </section>
 
           <section style={{ marginBottom: '2.5rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#042f2e', marginBottom: '0.75rem' }}>
-              🌮 Tacos, Food Trucks & Quick Bites
+              🌮 Mexican & Casual
             </h2>
             <p style={{ color: '#4b5563', lineHeight: 1.8, marginBottom: '1rem' }}>
-              San Marcos has some of the best casual Mexican food in Texas. Look for food trucks near the river and downtown.
+              San Marcos has authentic Mexican food done right, plus casual spots perfect for groups.
             </p>
             <ul style={{ color: '#4b5563', lineHeight: 2, paddingLeft: '1.5rem' }}>
-              <li><strong>Aldaco's Tacos</strong> — Quick, fresh, and affordable. A local institution.</li>
-              <li><strong>Juan's Tacos</strong> — Early morning breakfast tacos and carne guisada.</li>
-              <li><strong>Downtown Food Trucks</strong> — Various vendors near the river. BBQ, tacos, and breakfast.</li>
+              <li><strong>Dos Gatos</strong> — Authentic Mexican. Fresh, flavorful, and reliable. Great for families.</li>
+              <li><strong>Chuys</strong> — Casual Tex-Mex with a fun atmosphere. Perfect for groups and happy hour.</li>
             </ul>
           </section>
 
           <section style={{ marginBottom: '2.5rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#042f2e', marginBottom: '0.75rem' }}>
-              🍺 Breweries & Coffee
+              🥧 Dessert & Coffee
             </h2>
             <p style={{ color: '#4b5563', lineHeight: 1.8, marginBottom: '1rem' }}>
-              Craft beer and coffee culture thrive in San Marcos.
+              Sweet treats and quality coffee in downtown San Marcos.
             </p>
             <ul style={{ color: '#4b5563', lineHeight: 2, paddingLeft: '1.5rem' }}>
-              <li><strong>Barrel of Bones Brewing Company</strong> — Local brewery with outdoor seating and food trucks.</li>
-              <li><strong>Greener Pastures Coffee Roasters</strong> — Excellent local coffee. Good workspace for working remotely.</li>
-              <li><strong>San Marcos Tap House</strong> — 50+ craft beers on tap.</li>
+              <li><strong>Pie Society</strong> — Handcrafted pies and desserts. Stop by for a slice and coffee.</li>
             </ul>
           </section>
 
           <section style={{ marginBottom: '2.5rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#042f2e', marginBottom: '0.75rem' }}>
-              🏞️ Riverside Dining & Scenic Spots
+              🍔 American & Comfort Food
             </h2>
             <p style={{ color: '#4b5563', lineHeight: 1.8, marginBottom: '1rem' }}>
-              Dining with a view of the San Marcos River is one of the city's best experiences.
+              Classic American dining and pub fare.
             </p>
             <ul style={{ color: '#4b5563', lineHeight: 2, paddingLeft: '1.5rem' }}>
-              <li><strong>Tantra Restaurant</strong> — Fine dining overlooking the river. Live music on weekends. Known for steaks and seafood.</li>
-              <li><strong>The Grapevine</strong> — Casual riverside dining with good appetizers and drinks.</li>
-              <li><strong>Downtown Riverfront Picnic Areas</strong> — Free river access for picnicking. Perfect for casual dining on the bank.</li>
+              <li><strong>Sean Patricks</strong> — Pub-style dining with burgers, appetizers, and craft beers.</li>
+              <li><strong>Blue Dahlia</strong> — Casual spot with comfort food and a welcoming vibe.</li>
             </ul>
           </section>
 
           <section style={{ marginBottom: '2.5rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#042f2e', marginBottom: '0.75rem' }}>
-              🎓 College Town Vibes
+              💡 Pro Tips
             </h2>
-            <p style={{ color: '#4b5563', lineHeight: 1.8, marginBottom: '1rem' }}>
-              Texas State University keeps the dining scene young and diverse. The downtown strip has new restaurants and bars opening regularly.
-            </p>
+            <ul style={{ color: '#4b5563', lineHeight: 2, paddingLeft: '1.5rem' }}>
+              <li>Most restaurants are within walking distance of downtown and the river.</li>
+              <li>Arrive early on weekends (before 6pm) to avoid long waits.</li>
+              <li>Check <Link to="/" style={{ color: '#0e8c8c', fontWeight: 600 }}>SM-TX Events</Link> for live music and special dining events happening around town.</li>
+            </ul>
           </section>
 
           {/* Riverbend CTA */}
@@ -129,7 +126,7 @@ export default function GuideDining() {
               🏡 Cook Your Own Meals Too
             </h3>
             <p style={{ color: '#134e4a', lineHeight: 1.7, marginBottom: '1rem' }}>
-              Riverbend Hideaway has a full kitchen if you want to cook group meals. Stock up at local groceries and enjoy farm-to-table meals on your private deck overlooking the Blanco River.
+              Riverbend Hideaway has a full kitchen if you want to cook group meals. Stock up at local grocers and enjoy farm-to-table meals on your private deck overlooking the Blanco River.
             </p>
             <a
               href={RIVERBEND_URL}
@@ -147,12 +144,6 @@ export default function GuideDining() {
             >
               View Riverbend Hideaway →
             </a>
-          </section>
-
-          <section style={{ paddingTop: '1.5rem', borderTop: '1px solid #dbeaed' }}>
-            <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-              <strong>Pro Tip:</strong> Most downtown restaurants are casual and friendly. Show up early (before 6pm) to avoid long waits on weekends.
-            </p>
           </section>
         </div>
       </div>
