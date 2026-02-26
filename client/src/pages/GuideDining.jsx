@@ -52,28 +52,40 @@ export default function GuideDining() {
           
           <section style={{ marginBottom: '2.5rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#042f2e', marginBottom: '0.75rem' }}>
-              🍽️ Upscale & Fine Dining
+              🍽️ Upscale Dining
             </h2>
-            <p style={{ color: '#4b5563', lineHeight: 1.8, marginBottom: '1rem' }}>
-              San Marcos has quality restaurants perfect for a special night out.
-            </p>
             <ul style={{ color: '#4b5563', lineHeight: 2, paddingLeft: '1.5rem' }}>
-              <li><strong>North Street</strong> — Contemporary American cuisine with carefully sourced ingredients. Great for date nights and celebrations.</li>
-              <li><strong>Industry</strong> — Modern dining with seasonal menus. Known for creative dishes and craft cocktails.</li>
-              <li><strong>Umami</strong> — Asian-inspired cuisine with bold flavors and an extensive drink program.</li>
+              <li><strong>North Street</strong> — Indian-fusion curry shop offering creative dishes like curry nachos, chicken tikka masala tacos, and curry queso. A fresh take on Indian cuisine, San Marcos style.</li>
+              <li><strong>Blue Dahlia Bistro</strong> — Charming European-inspired bistro with a garden patio, known for savory crepes, Coq au Vin Blanc, Eggs Benedict, and French dip sandwiches. Great for brunch.</li>
             </ul>
           </section>
 
           <section style={{ marginBottom: '2.5rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#042f2e', marginBottom: '0.75rem' }}>
-              🌮 Mexican & Casual
+              🍟 Casual & Comfort Food
             </h2>
-            <p style={{ color: '#4b5563', lineHeight: 1.8, marginBottom: '1rem' }}>
-              San Marcos has authentic Mexican food done right, plus casual spots perfect for groups.
-            </p>
             <ul style={{ color: '#4b5563', lineHeight: 2, paddingLeft: '1.5rem' }}>
-              <li><strong>Dos Gatos</strong> — Authentic Mexican. Fresh, flavorful, and reliable. Great for families.</li>
-              <li><strong>Chuys</strong> — Casual Tex-Mex with a fun atmosphere. Perfect for groups and happy hour.</li>
+              <li><strong>Industry</strong> — American bar & grill open until midnight with burgers, smoked half chicken, fish & chips, and loaded nachos. Pet-friendly patio. Good for late-night dining.</li>
+              <li><strong>Sean Patrick's</strong> — Downtown Irish pub and sports bar with live music in the evenings. Known for Guinness fish & chips, shepherd's pie, and Irish egg rolls. Located on the Square.</li>
+              <li><strong>Chuy's</strong> — Tex-Mex chain known for made-from-scratch cooking, bottomless chips and salsa, fresh-squeezed margaritas, and their famous creamy jalapeño dip. Colorful, eclectic atmosphere.</li>
+            </ul>
+          </section>
+
+          <section style={{ marginBottom: '2.5rem' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#042f2e', marginBottom: '0.75rem' }}>
+              🍣 Asian
+            </h2>
+            <ul style={{ color: '#4b5563', lineHeight: 2, paddingLeft: '1.5rem' }}>
+              <li><strong>Umami</strong> — Sushi bar with fresh nigiri, creative rolls, poke nachos, and Korean-influenced dishes like Bulgogi Don. Open for lunch and dinner.</li>
+            </ul>
+          </section>
+
+          <section style={{ marginBottom: '2.5rem' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#042f2e', marginBottom: '0.75rem' }}>
+              🥐 Breakfast & Bakery
+            </h2>
+            <ul style={{ color: '#4b5563', lineHeight: 2, paddingLeft: '1.5rem' }}>
+              <li><strong>Dos Gatos</strong> — Beloved local bakery specializing in fresh-made Texas kolaches, both savory (sausage & egg, hatch chili sausage, ham & cheddar) and sweet (peaches & cream, cinnamon roll). Open early morning to 3PM. Pet-friendly.</li>
             </ul>
           </section>
 
@@ -81,24 +93,8 @@ export default function GuideDining() {
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#042f2e', marginBottom: '0.75rem' }}>
               🍕 Pizza
             </h2>
-            <p style={{ color: '#4b5563', lineHeight: 1.8, marginBottom: '1rem' }}>
-              Quality pizza in downtown San Marcos.
-            </p>
             <ul style={{ color: '#4b5563', lineHeight: 2, paddingLeft: '1.5rem' }}>
-              <li><strong>Pie Society</strong> — Handcrafted pizza. Great for casual dining or takeout.</li>
-            </ul>
-          </section>
-
-          <section style={{ marginBottom: '2.5rem' }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#042f2e', marginBottom: '0.75rem' }}>
-              🍔 American & Comfort Food
-            </h2>
-            <p style={{ color: '#4b5563', lineHeight: 1.8, marginBottom: '1rem' }}>
-              Classic American dining and pub fare.
-            </p>
-            <ul style={{ color: '#4b5563', lineHeight: 2, paddingLeft: '1.5rem' }}>
-              <li><strong>Sean Patricks</strong> — Pub-style dining with burgers, appetizers, and craft beers.</li>
-              <li><strong>Blue Dahlia</strong> — Casual spot with comfort food and a welcoming vibe.</li>
+              <li><strong>Pie Society</strong> — Well-loved pizza spot known for creative specialty pies, pizza by the slice, garlic knots, and Strawberry Goat Cheese Salad. Casual, budget-friendly with delivery available.</li>
             </ul>
           </section>
 
