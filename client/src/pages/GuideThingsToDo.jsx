@@ -97,9 +97,9 @@ export default function GuideThingsToDo() {
               Texas State University anchors the city and brings constant cultural energy. Museums and historic sites tell the story of this ancient settlement.
             </p>
             <ul style={{ color: '#4b5563', lineHeight: 2, paddingLeft: '1.5rem' }}>
-              <li><strong>The Meadows Center</strong> — Museum, research, and visitor center at Spring Lake.</li>
-              <li><strong>San Marcos Art Center</strong> — Local artists and rotating exhibits.</li>
-              <li><strong>Gruene Historic District (20 min)</strong> — Charming town with live music venues, antique shops, and riverside dining.</li>
+              <li><strong>The Meadows Center</strong> — Museum, research, and visitor center at Spring Lake. Learn about the archaeological and natural history of the area.</li>
+              <li><strong>San Marcos Art Center</strong> — Local artists and rotating exhibits. Located downtown.</li>
+              <li><strong>TXST Campus</strong> — Walk the Texas State University campus. Frequent events, concerts, and galleries open to the public year-round.</li>
             </ul>
           </section>
 

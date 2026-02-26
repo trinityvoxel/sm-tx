@@ -84,13 +84,13 @@ export default function GuideOutdoor() {
               🚴 Hiking & Trail Walking
             </h2>
             <p style={{ color: '#4b5563', lineHeight: 1.8, marginBottom: '1rem' }}>
-              Scenic trails through the Hill Country. Distances range from casual walks to day hikes.
+              Easy trails around San Marcos, perfect for morning walks or afternoon adventures.
             </p>
             <ul style={{ color: '#4b5563', lineHeight: 2, paddingLeft: '1.5rem' }}>
-              <li><strong>Blanco River Greenway</strong> — Easy riverside trail, great for families.</li>
-              <li><strong>Purgatory Creek Trail</strong> — 3-mile loop, moderate difficulty. Waterfall views.</li>
-              <li><strong>Willow Springs Trail</strong> — Scenic walk through native trees and wildflowers (seasonal).</li>
-              <li><strong>Cypress Creek (30 min away)</strong> — More challenging hikes with creek crossings.</li>
+              <li><strong>Blanco River Greenway</strong> — Easy riverside trail along the Blanco River. Great for families and casual walkers.</li>
+              <li><strong>Purgatory Creek Trail</strong> — 3-mile loop with water crossings. Moderate difficulty. Start near downtown.</li>
+              <li><strong>Spring Lake Overlook Trail</strong> — Short, scenic walk with views of the springs and wildlife.</li>
+              <li><strong>Downtown Riverfront Trail</strong> — Flat walk through downtown with river views and local businesses.</li>
             </ul>
           </section>
 
@@ -124,15 +124,15 @@ export default function GuideOutdoor() {
 
           <section style={{ marginBottom: '2.5rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#042f2e', marginBottom: '0.75rem' }}>
-              📸 Nature Watching & Photography
+              📸 Wildlife & Nature Watching
             </h2>
             <p style={{ color: '#4b5563', lineHeight: 1.8, marginBottom: '1rem' }}>
-              The Hill Country is known for wildlife and wildflowers. Spring (March–May) is peak season for bluebonnets and Indian paintbrush.
+              San Marcos' spring-fed water attracts birds and local wildlife. Best viewing is early morning or dusk.
             </p>
             <ul style={{ color: '#4b5563', lineHeight: 2, paddingLeft: '1.5rem' }}>
-              <li><strong>Spring Lake Overlook</strong> — Great for bird watching and landscape photography.</li>
-              <li><strong>Wildflower Trails</strong> — Best in spring. Google "Hill Country wildflower tours" for guided options.</li>
-              <li><strong>Sunrise/Sunset Spots</strong> — River overlooks near downtown.</li>
+              <li><strong>Spring Lake Overlook</strong> — Prime bird watching spot. Bring binoculars early morning.</li>
+              <li><strong>Downtown River Overlooks</strong> — Fish, turtles, and water birds visible from riverfront trails.</li>
+              <li><strong>Aquarena Springs</strong> — Watch for native fish and aquatic life in crystal-clear water.</li>
             </ul>
           </section>
 
@@ -171,7 +171,10 @@ export default function GuideOutdoor() {
 
           <section style={{ paddingTop: '1.5rem', borderTop: '1px solid #dbeaed' }}>
             <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-              <strong>Beginner Tip:</strong> Start with floating the river and swimming at Spring Lake — no experience needed. Then venture to trails as you explore the area.
+              <strong>Beginner Tip:</strong> Start with floating the river and swimming at Spring Lake — no experience needed. Most trails are within walking distance of downtown.
+            </p>
+            <p style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '0.75rem' }}>
+              <strong>Want more adventure?</strong> Check out our <Link to="/guides/hill-country-weekend" style={{ color: '#0e8c8c' }}>Hill Country Weekend guide</Link> for day trips to nearby parks and trails.
             </p>
           </section>
         </div>

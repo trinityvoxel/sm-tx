@@ -98,12 +98,12 @@ export default function GuideDining() {
               🏞️ Riverside Dining & Scenic Spots
             </h2>
             <p style={{ color: '#4b5563', lineHeight: 1.8, marginBottom: '1rem' }}>
-              Dining with a view of the river is one of San Marcos' best experiences.
+              Dining with a view of the San Marcos River is one of the city's best experiences.
             </p>
             <ul style={{ color: '#4b5563', lineHeight: 2, paddingLeft: '1.5rem' }}>
-              <li><strong>Tantra (Riverside)</strong> — Fine dining overlooking the river with live music.</li>
-              <li><strong>Old Mill Restaurant</strong> — Casual dining with river views.</li>
-              <li><strong>Gruene Hall (20 min)</strong> — Historic dance hall with Texas BBQ and live music every night.</li>
+              <li><strong>Tantra Restaurant</strong> — Fine dining overlooking the river. Live music on weekends. Known for steaks and seafood.</li>
+              <li><strong>The Grapevine</strong> — Casual riverside dining with good appetizers and drinks.</li>
+              <li><strong>Downtown Riverfront Picnic Areas</strong> — Free river access for picnicking. Perfect for casual dining on the bank.</li>
             </ul>
           </section>
 
