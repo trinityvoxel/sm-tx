@@ -79,13 +79,13 @@ export default function GuideDining() {
 
           <section style={{ marginBottom: '2.5rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#042f2e', marginBottom: '0.75rem' }}>
-              🥧 Dessert & Coffee
+              🍕 Pizza
             </h2>
             <p style={{ color: '#4b5563', lineHeight: 1.8, marginBottom: '1rem' }}>
-              Sweet treats and quality coffee in downtown San Marcos.
+              Quality pizza in downtown San Marcos.
             </p>
             <ul style={{ color: '#4b5563', lineHeight: 2, paddingLeft: '1.5rem' }}>
-              <li><strong>Pie Society</strong> — Handcrafted pies and desserts. Stop by for a slice and coffee.</li>
+              <li><strong>Pie Society</strong> — Handcrafted pizza. Great for casual dining or takeout.</li>
             </ul>
           </section>
 
