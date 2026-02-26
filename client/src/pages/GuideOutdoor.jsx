@@ -66,7 +66,7 @@ export default function GuideOutdoor() {
                 <strong>City Park to Sewell Park Float</strong> — The shorter, family-friendly float. This stretch runs through a cypress-lined section of the river past the Texas State University campus, taking about 45 minutes to an hour. It's gentle, scenic, and a great intro for kids or first-time floaters.
               </li>
               <li style={{ marginBottom: '0.75rem' }}>
-                <strong>Extended Float to Martindale</strong> — For a longer adventure, float from City Park all the way to Martindale, a rural community about 7 miles downstream. This takes 3–4 hours and gives you a genuine Hill Country river experience with less crowd. Shuttle pickups available through local outfitters.
+                <strong>Extended Float to Martindale</strong> — For a longer adventure, start at Don's Fish Camp or Texas State Tubes and float downstream to Martindale, a rural community about 7 miles away. This takes 3–4 hours and gives you a genuine Hill Country river experience with less crowd. Shuttle pickups available through local outfitters.
               </li>
               <li style={{ marginBottom: '0.75rem' }}>
                 <strong>Best Season:</strong> Year-round floats are possible thanks to the 72°F water, but summer weekends are the busiest and most festive. Fall and spring offer the same great water with lighter crowds and cooler air temps.
