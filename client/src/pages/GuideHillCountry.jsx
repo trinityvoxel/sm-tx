@@ -188,7 +188,7 @@ export default function GuideHillCountry() {
                 textDecoration: 'none'
               }}
             >
-              View Riverbend →
+              View Riverbend Hideaway →
             </a>
           </section>
 

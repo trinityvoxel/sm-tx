@@ -1,3 +1,4 @@
+import React from 'react';
 import { Link } from 'react-router-dom';
 import Head from '../components/Head.jsx';
 
@@ -165,7 +166,7 @@ export default function GuideOutdoor() {
                 textDecoration: 'none'
               }}
             >
-              View Riverbend →
+              View Riverbend Hideaway →
             </a>
           </section>
 

@@ -144,7 +144,7 @@ export default function GuideThingsToDo() {
                 textDecoration: 'none'
               }}
             >
-              View Riverbend →
+              View Riverbend Hideaway →
             </a>
           </section>
 
