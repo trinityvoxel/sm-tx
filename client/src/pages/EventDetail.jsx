@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { API, CATEGORY_COLORS, CATEGORY_LABELS } from '../constants.js';
+import Head from '../components/Head.jsx';
 
 function cleanDescription(html) {
   if (!html) return '';
@@ -103,7 +104,33 @@ export default function EventDetail() {
     ? `${formatDateFull(event.date_start)} – ${formatDateFull(event.date_end)}`
     : formatDateFull(event.date_start);
 
+  const eventSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: event.name,
+    description: event.description ? event.description.replace(/<[^>]*>/g, '') : event.name,
+    startDate: event.date_start,
+    endDate: event.date_end || event.date_start,
+    eventAttendanceMode: 'OfflineEventAttendanceMode',
+    eventStatus: 'EventScheduled',
+    location: {
+      '@type': 'Place',
+      name: event.venue_name,
+      address: event.venue_address
+    }
+  };
+
+  const eventUrl = `https://sm-tx.com/events/${id}`;
+  const eventDescription = event.description ? event.description.replace(/<[^>]*>/g, '').substring(0, 160) : `${event.name} in San Marcos`;
+
   return (
+    <>
+      <Head
+        title={`${event.name} | SM-TX Events`}
+        description={eventDescription}
+        url={eventUrl}
+        schema={eventSchema}
+      />
     <div style={{ minHeight: '100vh', background: '#f9fafb', paddingBottom: '5rem' }}>
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '1.5rem 1rem' }}>
         {/* Back */}
@@ -257,5 +284,6 @@ export default function EventDetail() {
         </div>
       </div>
     </div>
+    </>
   );
 }

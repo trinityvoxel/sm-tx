@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { API, CATEGORIES, CATEGORY_COLORS, CATEGORY_LABELS } from '../constants.js';
+import Head from '../components/Head.jsx';
 
 const RIVERBEND_PHOTO = 'https://hostaway-platform.s3.us-west-2.amazonaws.com/listing/87999-297530-DcPs67WuOwB5o7P5GqtCvFN32E8cRhwrrp8RMIlPoa8-68efd79c87e31';
 const RIVERBEND_URL = 'https://www.cohostr.com/listings/297530';
@@ -161,6 +162,12 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f0fdfa' }}>
+      <Head
+        title="SM-TX | San Marcos Events"
+        description="Everything happening in San Marcos, TX — Music, Food, Festivals, Markets and more. Your local events hub."
+        url="https://sm-tx.com"
+        type="website"
+      />
 
       {/* ── HERO ── */}
       <div style={{
@@ -358,6 +365,37 @@ export default function Home() {
             display: 'inline-block', background: '#0d9488', color: '#fff',
             padding: '0.6rem 1.5rem', borderRadius: 8, fontWeight: 600, textDecoration: 'none'
           }}>Submit an Event</Link>
+        </div>
+
+        {/* Guides section */}
+        <div style={{ marginTop: '3rem', paddingTop: '2rem', borderTop: '2px solid #d1fae5' }}>
+          <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#042f2e', marginBottom: '1rem', textAlign: 'center' }}>
+            📖 San Marcos Guides
+          </h2>
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1rem'
+          }}>
+            {[
+              { title: 'Things to Do', path: '/guides/things-to-do', emoji: '🏞️' },
+              { title: 'Dining & Restaurants', path: '/guides/dining', emoji: '🍽️' },
+              { title: 'Outdoor Activities', path: '/guides/outdoor-activities', emoji: '🚣' },
+              { title: 'Hill Country Weekend', path: '/guides/hill-country-weekend', emoji: '🍷' }
+            ].map(guide => (
+              <Link key={guide.path} to={guide.path} style={{
+                display: 'flex', alignItems: 'center', gap: '0.75rem',
+                padding: '1rem', background: '#fff', border: '1px solid #e5e7eb',
+                borderRadius: 8, textDecoration: 'none', color: 'inherit',
+                transition: 'all 0.15s'
+              }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; }}
+              >
+                <span style={{ fontSize: '1.5rem' }}>{guide.emoji}</span>
+                <span style={{ fontWeight: 600, color: '#042f2e' }}>{guide.title}</span>
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
 

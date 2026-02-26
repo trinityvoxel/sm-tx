@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Allow: /calendar
+Allow: /guides/
+Allow: /events/
+
+Disallow: /api/
+Disallow: /submit
+
+Sitemap: https://sm-tx.com/sitemap.xml

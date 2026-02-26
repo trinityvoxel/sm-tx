@@ -4,6 +4,10 @@ import Home from './pages/Home.jsx';
 import Calendar from './pages/Calendar.jsx';
 import EventDetail from './pages/EventDetail.jsx';
 import Submit from './pages/Submit.jsx';
+import GuideThingsToDo from './pages/GuideThingsToDo.jsx';
+import GuideDining from './pages/GuideDining.jsx';
+import GuideOutdoor from './pages/GuideOutdoor.jsx';
+import GuideHillCountry from './pages/GuideHillCountry.jsx';
 
 const navStyle = {
   background: '#042f2e',
@@ -128,6 +132,10 @@ export default function App() {
         <Route path="/calendar" element={<Calendar />} />
         <Route path="/events/:id" element={<EventDetail />} />
         <Route path="/submit" element={<Submit />} />
+        <Route path="/guides/things-to-do" element={<GuideThingsToDo />} />
+        <Route path="/guides/dining" element={<GuideDining />} />
+        <Route path="/guides/outdoor-activities" element={<GuideOutdoor />} />
+        <Route path="/guides/hill-country-weekend" element={<GuideHillCountry />} />
       </Routes>
       <Footer />
     </>
