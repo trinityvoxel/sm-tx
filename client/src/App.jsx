@@ -65,6 +65,86 @@ function NavLink({ to, children }) {
   );
 }
 
+function GuideDropdown() {
+  const [open, setOpen] = useState(false);
+  const loc = useLocation();
+  const isActive = loc.pathname.startsWith('/guides');
+  
+  const guides = [
+    { path: '/guides/things-to-do', label: 'Things to Do' },
+    { path: '/guides/dining', label: 'Dining & Restaurants' },
+    { path: '/guides/outdoor-activities', label: 'Outdoor Activities' },
+    { path: '/guides/hill-country-weekend', label: 'Hill Country Weekend' }
+  ];
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(!open)}
+        onMouseEnter={() => setOpen(true)}
+        style={{
+          color: isActive ? '#0e8c8c' : 'rgba(255,255,255,0.8)',
+          background: 'none',
+          border: 'none',
+          textDecoration: 'none',
+          fontWeight: isActive ? 600 : 400,
+          fontSize: 'clamp(0.72rem, 2.4vw, 0.95rem)',
+          whiteSpace: 'nowrap',
+          padding: '0.25rem 0',
+          borderBottom: isActive ? '2px solid #0e8c8c' : '2px solid transparent',
+          transition: 'color 0.15s',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.3rem'
+        }}
+      >
+        Guides
+        <span style={{ fontSize: '0.7rem' }}>▾</span>
+      </button>
+      
+      {open && (
+        <div
+          onMouseLeave={() => setOpen(false)}
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            background: '#033c3b',
+            border: '1px solid #0e8c8c',
+            borderRadius: 6,
+            minWidth: 200,
+            zIndex: 1000,
+            marginTop: '0.25rem',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+          }}
+        >
+          {guides.map(guide => (
+            <Link
+              key={guide.path}
+              to={guide.path}
+              onClick={() => setOpen(false)}
+              style={{
+                display: 'block',
+                padding: '0.65rem 1rem',
+                color: '#fff',
+                textDecoration: 'none',
+                fontSize: 'clamp(0.7rem, 2.2vw, 0.9rem)',
+                transition: 'background 0.15s',
+                borderBottom: '1px solid rgba(14, 140, 140, 0.2)'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(14, 140, 140, 0.2)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'none'}
+            >
+              {guide.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
@@ -124,6 +204,7 @@ export default function App() {
           </Link>
           <NavLink to="/">Events</NavLink>
           <NavLink to="/calendar">Calendar</NavLink>
+          <GuideDropdown />
           <NavLink to="/submit">Submit Event</NavLink>
         </div>
       </nav>
