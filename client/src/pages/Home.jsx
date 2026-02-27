@@ -54,7 +54,7 @@ function EventCard({ event }) {
             src={photo}
             alt={label}
             loading="lazy"
-            style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }}
+            className="event-card-img"
           />
           {/* Category pill overlay */}
           <span style={{
@@ -342,7 +342,7 @@ export default function Home() {
             </button>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+          <div className="event-grid">
             {events.map(event => <EventCard key={event.id} event={event} />)}
           </div>
         )}
