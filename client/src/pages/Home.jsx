@@ -120,10 +120,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [category, setCategory] = useState('all');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [searchFrom, setSearchFrom] = useState('');
-  const [searchTo, setSearchTo] = useState('');
+
 
   async function fetchEvents() {
     setLoading(true);
@@ -131,12 +128,7 @@ export default function Home() {
       let url = `${API}/events`;
       const params = new URLSearchParams();
       if (category !== 'all') params.set('category', category);
-      if (searchFrom && searchTo) {
-        params.set('date_from', searchFrom);
-        params.set('date_to', searchTo);
-      } else {
-        params.set('upcoming', 'true');
-      }
+      params.set('upcoming', 'true');
       const q = params.toString();
       if (q) url += '?' + q;
       const data = await (await fetch(url)).json();
@@ -148,17 +140,7 @@ export default function Home() {
     }
   }
 
-  useEffect(() => { fetchEvents(); }, [category, searchFrom, searchTo]);
-
-  function handleSearch(e) {
-    e.preventDefault();
-    setSearchFrom(dateFrom);
-    setSearchTo(dateTo);
-  }
-
-  function handleClear() {
-    setDateFrom(''); setDateTo(''); setSearchFrom(''); setSearchTo('');
-  }
+  useEffect(() => { fetchEvents(); }, [category]);
 
   return (
     <div style={{ minHeight: '100vh', background: '#f0fdfa' }}>
@@ -195,37 +177,6 @@ export default function Home() {
           <p style={{ fontSize: '1.1rem', opacity: 0.88, marginBottom: '1.75rem', textShadow: '0 1px 8px rgba(0,0,0,0.4)' }}>
             Music. Events. Festivals. Markets. All in one place.
           </p>
-
-          {/* Date picker */}
-          <form onSubmit={handleSearch} style={{
-            background: 'rgba(255,255,255,0.12)',
-            border: '1px solid rgba(255,255,255,0.22)',
-            borderRadius: 14, padding: '1rem 1.25rem',
-            display: 'flex', flexWrap: 'wrap', gap: '0.75rem',
-            alignItems: 'center', justifyContent: 'center',
-            backdropFilter: 'blur(10px)', marginBottom: '1rem',
-          }}>
-            <span style={{ fontSize: '0.9rem', opacity: 0.9 }}>🗓 Planning a visit?</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-              <label style={{ fontSize: '0.85rem', opacity: 0.8 }}>Arriving</label>
-              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-                style={{ borderRadius: 8, border: 'none', padding: '0.4rem 0.6rem', fontSize: '0.9rem', background: 'rgba(255,255,255,0.92)' }} />
-              <label style={{ fontSize: '0.85rem', opacity: 0.8 }}>Leaving</label>
-              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-                style={{ borderRadius: 8, border: 'none', padding: '0.4rem 0.6rem', fontSize: '0.9rem', background: 'rgba(255,255,255,0.92)' }} />
-            </div>
-            <button type="submit" style={{
-              background: '#0d9488', color: '#fff', border: 'none', borderRadius: 8,
-              padding: '0.45rem 1rem', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer'
-            }}>Show Events →</button>
-            {(searchFrom || searchTo) && (
-              <button type="button" onClick={handleClear} style={{
-                background: 'transparent', color: 'rgba(255,255,255,0.7)',
-                border: '1px solid rgba(255,255,255,0.3)', borderRadius: 8,
-                padding: '0.4rem 0.75rem', fontSize: '0.8rem', cursor: 'pointer'
-              }}>Clear</button>
-            )}
-          </form>
 
           {/* ── Riverbend Hideaway — Option C banner ── */}
           <a href={RIVERBEND_URL} target="_blank" rel="noopener noreferrer"
@@ -327,13 +278,6 @@ export default function Home() {
           })}
         </div>
 
-        {(searchFrom && searchTo) && (
-          <div style={{ marginBottom: '1rem', fontSize: '0.9rem', color: '#4b5563' }}>
-            Showing events from <strong>{formatDate(searchFrom)}</strong> to <strong>{formatDate(searchTo)}</strong>
-            {' '}· {events.length} found
-          </div>
-        )}
-
         {loading ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
             <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🌀</div>Loading events...
@@ -343,10 +287,7 @@ export default function Home() {
         ) : events.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
             <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔍</div>
-            No events found.{' '}
-            <button onClick={handleClear} style={{ color: '#0d9488', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-              Clear filters
-            </button>
+            No events found.
           </div>
         ) : (
           <div className="event-grid">
