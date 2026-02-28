@@ -92,8 +92,13 @@ function EventCard({ event }) {
             {event.name}
           </h3>
           <div style={{ fontSize: '0.82rem', color: '#4b5563' }}>
-            📅 {dateStr}{event.time ? ` · ${event.time}` : ''}
+            📅 {dateStr}
           </div>
+          {event.time && (
+            <div style={{ fontSize: '0.82rem', color: '#4b5563', fontWeight: 500 }}>
+              🕐 {event.time}
+            </div>
+          )}
           <div style={{ fontSize: '0.82rem', color: '#6b7280' }}>
             📍 {event.venue_name}
           </div>
