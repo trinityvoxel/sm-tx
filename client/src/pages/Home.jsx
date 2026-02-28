@@ -132,11 +132,16 @@ export default function Home() {
       const q = params.toString();
       if (q) url += '?' + q;
       const data = await (await fetch(url)).json();
-      // Sort events chronologically by date_start
+      // Sort events chronologically by date_start, then by time
       const sorted = [...data].sort((a, b) => {
         const dateA = new Date(a.date_start);
         const dateB = new Date(b.date_start);
-        return dateA - dateB;
+        const dateCompare = dateA - dateB;
+        if (dateCompare !== 0) return dateCompare;
+        // Same date, sort by time
+        const timeA = a.time || '';
+        const timeB = b.time || '';
+        return timeA.localeCompare(timeB);
       });
       setEvents(sorted);
     } catch {
