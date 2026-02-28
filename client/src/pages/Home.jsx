@@ -132,7 +132,13 @@ export default function Home() {
       const q = params.toString();
       if (q) url += '?' + q;
       const data = await (await fetch(url)).json();
-      setEvents(data);
+      // Sort events chronologically by date_start
+      const sorted = [...data].sort((a, b) => {
+        const dateA = new Date(a.date_start);
+        const dateB = new Date(b.date_start);
+        return dateA - dateB;
+      });
+      setEvents(sorted);
     } catch {
       setError('Failed to load events.');
     } finally {
