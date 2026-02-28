@@ -59,10 +59,18 @@ export default function Calendar() {
 
   function getEventsForDay(day) {
     const dateStr = isoDate(year, month, day);
-    return allEvents.filter(e => {
-      if (!e.date_end || e.date_end === e.date_start) return e.date_start === dateStr;
-      return e.date_start <= dateStr && e.date_end >= dateStr;
-    });
+    return allEvents
+      .filter(e => {
+        if (!e.date_end || e.date_end === e.date_start) return e.date_start === dateStr;
+        return e.date_start <= dateStr && e.date_end >= dateStr;
+      })
+      .sort((a, b) => {
+        // Secondary sort by time within a day (nulls last)
+        if (!a.time && !b.time) return 0;
+        if (!a.time) return 1;
+        if (!b.time) return -1;
+        return a.time.localeCompare(b.time);
+      });
   }
 
   function isInHighlight(day) {
