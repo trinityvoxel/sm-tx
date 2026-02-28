@@ -23,6 +23,18 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+  if (!match) return 0;
+  let [, hours, minutes, meridiem] = match;
+  hours = parseInt(hours);
+  minutes = parseInt(minutes);
+  if (meridiem?.toLowerCase() === 'pm' && hours !== 12) hours += 12;
+  if (meridiem?.toLowerCase() === 'am' && hours === 12) hours = 0;
+  return hours * 60 + minutes;
+}
+
 function EventCard({ event }) {
   const color = CATEGORY_COLORS[event.category] || '#6b7280';
   const label = CATEGORY_LABELS[event.category] || event.category;
@@ -143,10 +155,10 @@ export default function Home() {
         const dateB = new Date(b.date_start);
         const dateCompare = dateA - dateB;
         if (dateCompare !== 0) return dateCompare;
-        // Same date, sort by time
-        const timeA = a.time || '';
-        const timeB = b.time || '';
-        return timeA.localeCompare(timeB);
+        // Same date, sort by time (convert to 24-hour minutes for proper comparison)
+        const timeMinutesA = parseTimeToMinutes(a.time);
+        const timeMinutesB = parseTimeToMinutes(b.time);
+        return timeMinutesA - timeMinutesB;
       });
       setEvents(sorted);
     } catch {
