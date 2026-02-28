@@ -56,6 +56,23 @@ function esc(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+/**
+ * Returns today's date string (YYYY-MM-DD) in America/Chicago (CST/CDT).
+ * Avoids the UTC drift bug where dates after 6pm CST would return tomorrow's date.
+ */
+function todayCST() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date());
+}
+
+/**
+ * Returns a future date string N days from now, also CST-anchored.
+ */
+function futureDateCST(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(d);
+}
+
 /** Parse /api/events or /api/events/submit or /api/events/:id */
 function parsePath(url) {
   const path = new URL(url).pathname;
@@ -84,10 +101,14 @@ export async function onRequest(context) {
       const binds = ['approved'];
 
       if (params.get('upcoming') === 'true') {
-        const today = new Date().toISOString().slice(0, 10);
-        const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-        query += ' AND date_start >= ? AND date_start <= ?';
-        binds.push(today, future);
+        const today = todayCST();
+        const future = futureDateCST(30);
+        // Include events that:
+        //   (a) start today or in the next 30 days, OR
+        //   (b) are multi-day events that started before today but end today or later
+        // This ensures today's ongoing events always appear regardless of start time.
+        query += ' AND ((date_start >= ? AND date_start <= ?) OR (date_end IS NOT NULL AND date_end >= ? AND date_start < ?))';
+        binds.push(today, future, today, today);
       } else if (params.get('date')) {
         query += ' AND date_start = ?';
         binds.push(params.get('date'));
@@ -101,7 +122,7 @@ export async function onRequest(context) {
         binds.push(params.get('category'));
       }
 
-      query += ' ORDER BY date_start ASC';
+      query += ' ORDER BY date_start ASC, time ASC NULLS LAST';
 
       const stmt = env.DB.prepare(query);
       const { results } = await stmt.bind(...binds).all();
@@ -114,11 +135,14 @@ export async function onRequest(context) {
   // ── GET /api/events/upcoming ──────────────────────────────────────────────
   if (method === 'GET' && rest === '/events/upcoming') {
     try {
-      const today = new Date().toISOString().slice(0, 10);
-      const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const today = todayCST();
+      const future = futureDateCST(30);
       const { results } = await env.DB.prepare(
-        'SELECT * FROM events WHERE status = ? AND date_start >= ? AND date_start <= ? ORDER BY date_start ASC'
-      ).bind('approved', today, future).all();
+        `SELECT * FROM events WHERE status = ? AND (
+          (date_start >= ? AND date_start <= ?) OR
+          (date_end IS NOT NULL AND date_end >= ? AND date_start < ?)
+        ) ORDER BY date_start ASC, time ASC NULLS LAST`
+      ).bind('approved', today, future, today, today).all();
       return json(results);
     } catch (e) {
       return err(e.message, 500);
@@ -269,8 +293,8 @@ export async function onRequest(context) {
           skipped.push({ reason: 'missing required field', event: evt.name || '(unnamed)' });
           continue;
         }
-        // Skip past events
-        if (evt.date_start < new Date().toISOString().slice(0, 10)) {
+        // Skip past events (use CST date to avoid UTC drift)
+        if (evt.date_start < todayCST()) {
           skipped.push({ reason: 'past event', event: evt.name });
           continue;
         }
