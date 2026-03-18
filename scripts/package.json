@@ -1,0 +1,15 @@
+{
+  "name": "sm-tx-scrapers",
+  "version": "1.0.0",
+  "description": "SM-TX event scrapers",
+  "private": true,
+  "scripts": {
+    "scrape-events": "node scrape-events.js",
+    "scrape-browser": "node scrape-browser.js",
+    "dry-run-events": "node scrape-events.js --dry-run",
+    "dry-run-browser": "node scrape-browser.js --dry-run"
+  },
+  "dependencies": {
+    "playwright": "^1.41.0"
+  }
+}

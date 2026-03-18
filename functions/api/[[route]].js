@@ -636,5 +636,46 @@ export async function onRequest(context) {
     }
   }
 
+  // ── POST /api/admin/jobs/:id/trigger ─────────────────────────────────────
+  // Triggers the corresponding GitHub Actions workflow via workflow_dispatch.
+  // Requires env.GITHUB_TOKEN (PAT with actions:write) and env.GITHUB_REPO (e.g. "trinityvoxel/sm-tx")
+  const triggerMatch = rest.match(/^\/admin\/jobs\/([^/]+)\/trigger$/);
+  if (triggerMatch && method === 'POST') {
+    if (!isAuthed(request, env)) return err('Unauthorized', 401);
+    const jobId = triggerMatch[1];
+
+    const WORKFLOW_MAP = {
+      'smtx-event-scraper':   'event-scraper.yml',
+      'smtx-browser-scraper': 'browser-scraper.yml',
+    };
+    const workflow = WORKFLOW_MAP[jobId];
+    if (!workflow) return err(`No workflow mapped for job: ${jobId}`, 404);
+    if (!env.GITHUB_TOKEN) return err('GITHUB_TOKEN not configured', 500);
+    if (!env.GITHUB_REPO)  return err('GITHUB_REPO not configured', 500);
+
+    try {
+      const ghRes = await fetch(
+        `https://api.github.com/repos/${env.GITHUB_REPO}/actions/workflows/${workflow}/dispatches`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${env.GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github+json',
+            'Content-Type': 'application/json',
+            'X-GitHub-Api-Version': '2022-11-28',
+          },
+          body: JSON.stringify({ ref: 'main' }),
+        }
+      );
+      if (ghRes.status === 204) {
+        return json({ ok: true, message: `Triggered ${workflow}` });
+      }
+      const ghBody = await ghRes.text();
+      return err(`GitHub API error ${ghRes.status}: ${ghBody}`, 502);
+    } catch (e) {
+      return err(e.message, 500);
+    }
+  }
+
   return err('Not found', 404);
 }

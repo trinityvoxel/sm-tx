@@ -103,6 +103,54 @@ function Section({ title, children }) {
   );
 }
 
+// ─── Run Now Button ───────────────────────────────────────────────────────────
+
+function RunNowButton({ jobId, apiKey, onDone }) {
+  const [state, setState] = useState('idle'); // idle | running | done | error
+
+  async function handleRun() {
+    setState('running');
+    try {
+      const res = await fetch(`/api/admin/jobs/${encodeURIComponent(jobId)}/trigger`, {
+        method: 'POST',
+        headers: { 'X-SM-TX-Key': apiKey },
+      });
+      if (res.ok) {
+        setState('done');
+        // Refresh job data after a short delay to let the run register
+        setTimeout(() => { setState('idle'); onDone(); }, 4000);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        console.error('Trigger error:', body);
+        setState('error');
+        setTimeout(() => setState('idle'), 3000);
+      }
+    } catch (e) {
+      console.error(e);
+      setState('error');
+      setTimeout(() => setState('idle'), 3000);
+    }
+  }
+
+  const label = { idle: '▶ Run', running: 'Starting…', done: '✓ Queued', error: '✗ Failed' }[state];
+  const bg    = { idle: '#f9fafb', running: '#f3f4f6', done: '#dcfce7', error: '#fee2e2' }[state];
+  const color = { idle: '#374151', running: '#6b7280', done: '#166534', error: '#991b1b' }[state];
+
+  return (
+    <button
+      onClick={handleRun}
+      disabled={state !== 'idle'}
+      style={{
+        padding: '0.25rem 0.65rem', borderRadius: 6, fontSize: '0.8rem',
+        border: '1px solid #e5e7eb', background: bg, color, cursor: state === 'idle' ? 'pointer' : 'not-allowed',
+        whiteSpace: 'nowrap', transition: 'all 0.2s',
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 function Dashboard({ apiKey, onLogout }) {
@@ -231,12 +279,20 @@ function Dashboard({ apiKey, onLogout }) {
             SM-TX internal controls
           </p>
         </div>
-        <button
-          onClick={onLogout}
-          style={{ padding: '0.4rem 0.9rem', borderRadius: 8, border: '1px solid #d1d5db', background: '#f9fafb', cursor: 'pointer', fontSize: '0.85rem', color: '#374151' }}
-        >
-          Sign out
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            onClick={fetchAdminData}
+            style={{ padding: '0.4rem 0.9rem', borderRadius: 8, border: '1px solid #d1d5db', background: '#f9fafb', cursor: 'pointer', fontSize: '0.85rem', color: '#374151' }}
+          >
+            ↻ Refresh
+          </button>
+          <button
+            onClick={onLogout}
+            style={{ padding: '0.4rem 0.9rem', borderRadius: 8, border: '1px solid #d1d5db', background: '#f9fafb', cursor: 'pointer', fontSize: '0.85rem', color: '#374151' }}
+          >
+            Sign out
+          </button>
+        </div>
       </div>
 
       {/* Pending Events */}
@@ -353,6 +409,7 @@ function Dashboard({ apiKey, onLogout }) {
                   <th style={{ padding: '0.5rem' }}>Interval</th>
                   <th style={{ padding: '0.5rem' }}>Last Run</th>
                   <th style={{ padding: '0.5rem' }}>Status</th>
+                  <th style={{ padding: '0.5rem' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -361,11 +418,11 @@ function Dashboard({ apiKey, onLogout }) {
                   const last = runs[0];
                   return (
                     <tr key={job.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <td style={{ padding: '0.5rem', fontFamily: 'monospace' }}>{job.id}</td>
+                      <td style={{ padding: '0.5rem', fontFamily: 'monospace', fontSize: '0.8rem' }}>{job.id}</td>
                       <td style={{ padding: '0.5rem' }}>{job.description}</td>
                       <td style={{ padding: '0.5rem' }}>{job.enabled ? 'Yes' : 'No'}</td>
                       <td style={{ padding: '0.5rem' }}>{job.expected_interval}</td>
-                      <td style={{ padding: '0.5rem' }}>
+                      <td style={{ padding: '0.5rem', fontSize: '0.85rem' }}>
                         {last ? new Date(last.finished_at || last.started_at).toLocaleString() : '—'}
                       </td>
                       <td style={{ padding: '0.5rem' }}>
@@ -380,6 +437,9 @@ function Dashboard({ apiKey, onLogout }) {
                         ) : (
                           <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>No runs</span>
                         )}
+                      </td>
+                      <td style={{ padding: '0.5rem' }}>
+                        <RunNowButton jobId={job.id} apiKey={apiKey} onDone={fetchAdminData} />
                       </td>
                     </tr>
                   );
