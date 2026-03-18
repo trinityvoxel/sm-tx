@@ -5,6 +5,7 @@ Allow: /guides/
 Allow: /events/
 
 Disallow: /api/
+Disallow: /admin
 Disallow: /submit
 
 Sitemap: https://sm-tx.com/sitemap.xml
