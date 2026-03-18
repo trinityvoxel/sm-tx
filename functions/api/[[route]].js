@@ -24,6 +24,26 @@ function isAuthed(request, env) {
   return request.headers.get('X-SM-TX-Key') === env.API_KEY;
 }
 
+/** Timing-safe string comparison to prevent timing attacks */
+async function safeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const enc = new TextEncoder();
+  const [ka, kb] = await Promise.all([
+    crypto.subtle.importKey('raw', enc.encode(a), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']),
+    crypto.subtle.importKey('raw', enc.encode(b), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']),
+  ]);
+  const msg = enc.encode('compare');
+  const [sa, sb] = await Promise.all([
+    crypto.subtle.sign('HMAC', ka, msg),
+    crypto.subtle.sign('HMAC', kb, msg),
+  ]);
+  const va = new Uint8Array(sa), vb = new Uint8Array(sb);
+  if (va.length !== vb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < va.length; i++) diff |= va[i] ^ vb[i];
+  return diff === 0;
+}
+
 function htmlPage(title, emoji, body, color = '#10b981') {
   return new Response(`<!DOCTYPE html>
 <html>
@@ -93,6 +113,22 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const rest = url.pathname.replace(/^\/api/, '').replace(/\/$/, '') || '/';
   const params = url.searchParams;
+
+  // ── POST /api/admin/login ─────────────────────────────────────────────────
+  // Validates ADMIN_PASSWORD and returns the API key for dashboard use.
+  if (method === 'POST' && rest === '/admin/login') {
+    try {
+      const body = await request.json();
+      const { password } = body || {};
+      if (!password) return err('Password required', 400);
+      if (!env.ADMIN_PASSWORD) return err('ADMIN_PASSWORD not configured', 500);
+      const ok = await safeEqual(password, env.ADMIN_PASSWORD);
+      if (!ok) return err('Invalid password', 401);
+      return json({ apiKey: env.API_KEY });
+    } catch (e) {
+      return err(e.message, 500);
+    }
+  }
 
   // ── GET /api/events ───────────────────────────────────────────────────────
   if (method === 'GET' && rest === '/events') {

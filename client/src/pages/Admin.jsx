@@ -21,14 +21,17 @@ function LoginGate({ onLogin }) {
     setChecking(true);
     setError('');
     try {
-      const res = await fetch('/api/admin/settings', {
-        headers: { 'X-SM-TX-Key': input.trim() },
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: input.trim() }),
       });
       if (res.ok) {
-        sessionStorage.setItem(SESSION_KEY, input.trim());
-        onLogin(input.trim());
+        const { apiKey } = await res.json();
+        sessionStorage.setItem(SESSION_KEY, apiKey);
+        onLogin(apiKey);
       } else {
-        setError('Invalid API key.');
+        setError('Invalid password.');
       }
     } catch {
       setError('Could not reach API.');
@@ -48,12 +51,12 @@ function LoginGate({ onLogin }) {
       }}>
         <h1 style={{ fontSize: '1.4rem', color: '#022c22', marginBottom: '0.25rem' }}>Admin</h1>
         <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-          Enter the API key to continue.
+          Enter your password to continue.
         </p>
         <form onSubmit={handleSubmit}>
           <input
             type="password"
-            placeholder="API key"
+            placeholder="Password"
             value={input}
             onChange={e => setInput(e.target.value)}
             autoFocus
