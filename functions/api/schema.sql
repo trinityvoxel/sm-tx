@@ -22,6 +22,46 @@ CREATE TABLE IF NOT EXISTS events (
   updated_at      TEXT NOT NULL
 );
 
+-- Event sources configuration
+CREATE TABLE IF NOT EXISTS event_sources (
+  id             TEXT PRIMARY KEY,
+  type           TEXT NOT NULL,              -- 'web' | 'facebook'
+  name           TEXT NOT NULL,
+  url            TEXT NOT NULL,
+  active         INTEGER NOT NULL DEFAULT 1, -- 1 = active, 0 = disabled
+  frequency      TEXT NOT NULL DEFAULT 'daily', -- e.g. 'daily', 'weekly'
+  last_scraped_at TEXT,
+  created_at     TEXT NOT NULL,
+  updated_at     TEXT NOT NULL
+);
+
+-- Background jobs (logical jobs like browser_scraper, facebook_scraper)
+CREATE TABLE IF NOT EXISTS jobs (
+  id               TEXT PRIMARY KEY,        -- e.g. 'browser_scraper'
+  description      TEXT NOT NULL,
+  enabled          INTEGER NOT NULL DEFAULT 1,
+  expected_interval TEXT NOT NULL,          -- e.g. '1d', '7d'
+  created_at       TEXT NOT NULL,
+  updated_at       TEXT NOT NULL
+);
+
+-- Job run history
+CREATE TABLE IF NOT EXISTS job_runs (
+  id            TEXT PRIMARY KEY,
+  job_id        TEXT NOT NULL REFERENCES jobs(id),
+  started_at    TEXT NOT NULL,
+  finished_at   TEXT NOT NULL,
+  status        TEXT NOT NULL,             -- 'success' | 'error'
+  error_message TEXT,
+  meta          TEXT                       -- JSON blob with counts, etc.
+);
+
+-- Key-value settings store (feature flags, toggles)
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
 -- Sample approved events (San Marcos, TX)
 INSERT OR IGNORE INTO events (id, source, status, name, date_start, time, venue_name, venue_address, category, description, url, cost, kid_friendly, pet_friendly, age_21_plus, created_at, updated_at) VALUES
 (

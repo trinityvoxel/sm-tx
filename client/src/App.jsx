@@ -8,6 +8,7 @@ import GuideThingsToDo from './pages/GuideThingsToDo.jsx';
 import GuideDining from './pages/GuideDining.jsx';
 import GuideOutdoor from './pages/GuideOutdoor.jsx';
 import GuideHillCountry from './pages/GuideHillCountry.jsx';
+import Admin from './pages/Admin.jsx';
 
 const navStyle = {
   background: '#042f2e',
@@ -217,6 +218,7 @@ export default function App() {
         <Route path="/guides/dining" element={<GuideDining />} />
         <Route path="/guides/outdoor-activities" element={<GuideOutdoor />} />
         <Route path="/guides/hill-country-weekend" element={<GuideHillCountry />} />
+        <Route path="/admin" element={<Admin />} />
       </Routes>
       <Footer />
     </>

@@ -288,6 +288,26 @@ export async function onRequest(context) {
       const now = new Date().toISOString();
       const inserted = [];
       const skipped = [];
+
+      function normalizeName(name) {
+        if (!name) return '';
+        return String(name)
+          .toLowerCase()
+          .replace(/\s+live\s+at.*/g, '')
+          .replace(/\sat\s.+$/, '')
+          .replace(/[^a-z0-9]+/g, ' ')
+          .trim();
+      }
+
+      function sourcePriority(source) {
+        // Higher number = higher priority
+        const s = (source || 'scraped').toLowerCase();
+        if (s === 'venue_site') return 3;
+        if (s === 'facebook') return 2;
+        if (s === 'aggregator') return 1;
+        return 0;
+      }
+
       for (const evt of body.events) {
         if (!evt.name || !evt.date_start || !evt.venue_name || !evt.venue_address || !evt.category) {
           skipped.push({ reason: 'missing required field', event: evt.name || '(unnamed)' });
@@ -298,14 +318,58 @@ export async function onRequest(context) {
           skipped.push({ reason: 'past event', event: evt.name });
           continue;
         }
-        // Deduplicate by name + date_start
-        const existing = await env.DB.prepare(
-          'SELECT id FROM events WHERE name = ? AND date_start = ?'
-        ).bind(evt.name, evt.date_start).first();
+
+        const normName = normalizeName(evt.name);
+        const date = evt.date_start;
+        const venue = (evt.venue_name || '').toLowerCase().trim();
+
+        // Look for an exact match on normalized name, date, and venue first
+        let existing = await env.DB.prepare(
+          'SELECT * FROM events WHERE lower(name) = lower(?) AND date_start = ? AND lower(venue_name) = lower(?)'
+        ).bind(evt.name, date, evt.venue_name).first();
+
+        // If no exact venue match, fall back to any event with same normalized name + date
+        if (!existing && normName) {
+          const { results } = await env.DB.prepare(
+            'SELECT * FROM events WHERE date_start = ?'
+          ).bind(date).all();
+          existing = (results || []).find(row => normalizeName(row.name) === normName);
+        }
+
+        const newSource = evt.source || 'scraped';
+
         if (existing) {
-          skipped.push({ reason: 'duplicate', event: evt.name });
+          const existingPriority = sourcePriority(existing.source);
+          const incomingPriority = sourcePriority(newSource);
+          if (incomingPriority <= existingPriority) {
+            // Keep the existing row; skip this as duplicate
+            skipped.push({ reason: 'duplicate', event: evt.name });
+            continue;
+          }
+
+          // Upgrade existing row with better source details
+          const updates = [];
+          const vals = [];
+          const fields = ['description', 'url', 'cost'];
+          for (const f of fields) {
+            if (evt[f] && (!existing[f] || existing[f] === 'free')) {
+              updates.push(`${f} = ?`);
+              vals.push(evt[f]);
+            }
+          }
+          updates.push('source = ?');
+          vals.push(newSource);
+          updates.push('updated_at = ?');
+          vals.push(now);
+          vals.push(existing.id);
+
+          if (updates.length > 2) {
+            await env.DB.prepare(`UPDATE events SET ${updates.join(', ')} WHERE id = ?`).bind(...vals).run();
+          }
+          skipped.push({ reason: 'duplicate_upgraded', event: evt.name });
           continue;
         }
+
         const id = 'evt-' + Math.random().toString(36).slice(2, 10);
         await env.DB.prepare(`
           INSERT INTO events (
@@ -315,7 +379,7 @@ export async function onRequest(context) {
             submitter_name, submitter_email, created_at, updated_at
           ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         `).bind(
-          id, evt.source || 'scraped', 'approved',
+          id, newSource, 'approved',
           evt.name, evt.date_start, evt.date_end || null, evt.time || null,
           evt.venue_name, evt.venue_address, evt.category,
           evt.description || null, evt.url || null, evt.cost || 'free',
@@ -364,6 +428,175 @@ export async function onRequest(context) {
       }
     } catch (e) {
       return htmlPage('Error', '⚠️', `<p>${esc(e.message)}</p>`, '#f59e0b');
+    }
+  }
+
+  // ── GET /api/admin/settings ──────────────────────────────────────────────
+  if (method === 'GET' && rest === '/admin/settings') {
+    if (!isAuthed(request, env)) return err('Unauthorized', 401);
+    try {
+      const { results } = await env.DB.prepare('SELECT key, value FROM settings').all();
+      const settings = {};
+      for (const row of results || []) {
+        settings[row.key] = row.value;
+      }
+      return json(settings);
+    } catch (e) {
+      return err(e.message, 500);
+    }
+  }
+
+  // ── PATCH /api/admin/settings ────────────────────────────────────────────
+  if (method === 'PATCH' && rest === '/admin/settings') {
+    if (!isAuthed(request, env)) return err('Unauthorized', 401);
+    try {
+      const body = await request.json();
+      const updates = [];
+      for (const key of ['facebook_enabled', 'admin_enabled']) {
+        if (key in body) {
+          updates.push({ key, value: String(body[key]) });
+        }
+      }
+      if (!updates.length) return err('No updatable settings provided');
+      const stmt = env.DB.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
+      for (const u of updates) {
+        await stmt.bind(u.key, u.value).run();
+      }
+      return json({ ok: true });
+    } catch (e) {
+      return err(e.message, 500);
+    }
+  }
+
+  // ── /api/admin/sources (GET/POST) ────────────────────────────────────────
+  if (rest === '/admin/sources') {
+    if (!isAuthed(request, env)) return err('Unauthorized', 401);
+    if (method === 'GET') {
+      try {
+        const { results } = await env.DB.prepare('SELECT * FROM event_sources ORDER BY created_at DESC').all();
+        return json(results);
+      } catch (e) {
+        return err(e.message, 500);
+      }
+    }
+    if (method === 'POST') {
+      try {
+        const body = await request.json();
+        const required = ['type', 'name', 'url'];
+        for (const f of required) {
+          if (!body[f]) return err(`Missing required field: ${f}`);
+        }
+        const id = crypto.randomUUID();
+        const now = new Date().toISOString();
+        await env.DB.prepare(`
+          INSERT INTO event_sources (
+            id, type, name, url, active, frequency, last_scraped_at, created_at, updated_at
+          ) VALUES (?,?,?,?,?,?,?,?,?)
+        `).bind(
+          id,
+          body.type,
+          body.name,
+          body.url,
+          body.active === false ? 0 : 1,
+          body.frequency || 'daily',
+          null,
+          now,
+          now
+        ).run();
+        const created = await env.DB.prepare('SELECT * FROM event_sources WHERE id = ?').bind(id).first();
+        return json(created, 201);
+      } catch (e) {
+        return err(e.message, 500);
+      }
+    }
+  }
+
+  // ── PATCH /api/admin/sources/:id ─────────────────────────────────────────
+  const sourceMatch = rest.match(/^\/admin\/sources\/([^/]+)$/);
+  if (sourceMatch && method === 'PATCH') {
+    if (!isAuthed(request, env)) return err('Unauthorized', 401);
+    const sourceId = sourceMatch[1];
+    try {
+      const body = await request.json();
+      const allowed = ['name', 'url', 'active', 'frequency', 'last_scraped_at'];
+      const sets = [];
+      const vals = [];
+      for (const key of allowed) {
+        if (key in body) {
+          if (key === 'active') {
+            sets.push('active = ?');
+            vals.push(body.active ? 1 : 0);
+          } else {
+            sets.push(`${key} = ?`);
+            vals.push(body[key]);
+          }
+        }
+      }
+      if (!sets.length) return err('No updatable fields provided');
+      sets.push('updated_at = ?');
+      vals.push(new Date().toISOString());
+      vals.push(sourceId);
+      await env.DB.prepare(`UPDATE event_sources SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
+      const updated = await env.DB.prepare('SELECT * FROM event_sources WHERE id = ?').bind(sourceId).first();
+      if (!updated) return err('Source not found', 404);
+      return json(updated);
+    } catch (e) {
+      return err(e.message, 500);
+    }
+  }
+
+  // ── GET /api/admin/jobs ─────────────────────────────────────────────────
+  if (method === 'GET' && rest === '/admin/jobs') {
+    if (!isAuthed(request, env)) return err('Unauthorized', 401);
+    try {
+      const { results } = await env.DB.prepare('SELECT * FROM jobs ORDER BY id').all();
+      return json(results);
+    } catch (e) {
+      return err(e.message, 500);
+    }
+  }
+
+  // ── GET /api/admin/jobs/:id/runs ─────────────────────────────────────────
+  const jobRunsMatch = rest.match(/^\/admin\/jobs\/([^/]+)\/runs$/);
+  if (jobRunsMatch && method === 'GET') {
+    if (!isAuthed(request, env)) return err('Unauthorized', 401);
+    const jobId = jobRunsMatch[1];
+    const limit = Math.min(parseInt(params.get('limit') || '20', 10), 100);
+    try {
+      const { results } = await env.DB.prepare(
+        'SELECT * FROM job_runs WHERE job_id = ? ORDER BY started_at DESC LIMIT ?'
+      ).bind(jobId, limit).all();
+      return json(results);
+    } catch (e) {
+      return err(e.message, 500);
+    }
+  }
+
+  // ── POST /api/admin/jobs/:id/runs ────────────────────────────────────────
+  const jobRunsPostMatch = rest.match(/^\/admin\/jobs\/([^/]+)\/runs$/);
+  if (jobRunsPostMatch && method === 'POST') {
+    if (!isAuthed(request, env)) return err('Unauthorized', 401);
+    const jobId = jobRunsPostMatch[1];
+    try {
+      const body = await request.json();
+      const id = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO job_runs (
+          id, job_id, started_at, finished_at, status, error_message, meta
+        ) VALUES (?,?,?,?,?,?,?)
+      `).bind(
+        id,
+        jobId,
+        body.started_at,
+        body.finished_at,
+        body.status,
+        body.error_message || null,
+        body.meta ? JSON.stringify(body.meta) : null
+      ).run();
+      const created = await env.DB.prepare('SELECT * FROM job_runs WHERE id = ?').bind(id).first();
+      return json(created, 201);
+    } catch (e) {
+      return err(e.message, 500);
     }
   }
 
