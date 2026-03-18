@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 const SESSION_KEY = 'sm_tx_admin_key';
 
@@ -105,48 +105,98 @@ function Section({ title, children }) {
 
 // ─── Run Now Button ───────────────────────────────────────────────────────────
 
-function RunNowButton({ jobId, apiKey, onDone }) {
-  const [state, setState] = useState('idle'); // idle | running | done | error
+function RunNowButton({ jobId, apiKey, onDone, lastRunAt }) {
+  const [state, setState] = useState('idle'); // idle | queued | polling | done | error
+  const [elapsed, setElapsed] = useState(0);
+  const pollRef = useRef(null);
+  const timerRef = useRef(null);
+
+  function stopPolling() {
+    if (pollRef.current) clearInterval(pollRef.current);
+    if (timerRef.current) clearInterval(timerRef.current);
+    pollRef.current = null;
+    timerRef.current = null;
+  }
 
   async function handleRun() {
-    setState('running');
+    setState('queued');
+    setElapsed(0);
     try {
       const res = await fetch(`/api/admin/jobs/${encodeURIComponent(jobId)}/trigger`, {
         method: 'POST',
         headers: { 'X-SM-TX-Key': apiKey },
       });
-      if (res.ok) {
-        setState('done');
-        // Refresh job data after a short delay to let the run register
-        setTimeout(() => { setState('idle'); onDone(); }, 4000);
-      } else {
+      if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         console.error('Trigger error:', body);
         setState('error');
-        setTimeout(() => setState('idle'), 3000);
+        setTimeout(() => setState('idle'), 4000);
+        return;
       }
     } catch (e) {
-      console.error(e);
       setState('error');
-      setTimeout(() => setState('idle'), 3000);
+      setTimeout(() => setState('idle'), 4000);
+      return;
     }
+
+    // Poll every 15s for up to 10 minutes waiting for D1 to show a newer run
+    setState('polling');
+    const startedAt = Date.now();
+    timerRef.current = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
+
+    pollRef.current = setInterval(async () => {
+      const waited = Date.now() - startedAt;
+      if (waited > 10 * 60 * 1000) {
+        stopPolling();
+        setState('idle');
+        onDone();
+        return;
+      }
+      try {
+        const res = await fetch(`/api/admin/jobs/${encodeURIComponent(jobId)}/runs?limit=1`, {
+          headers: { 'X-SM-TX-Key': apiKey },
+        });
+        if (!res.ok) return;
+        const runs = await res.json();
+        const newest = runs?.[0];
+        // A new run has appeared if its started_at is after we triggered
+        if (newest && new Date(newest.started_at).getTime() > startedAt - 30000) {
+          if (newest.status === 'success' || newest.status === 'error') {
+            stopPolling();
+            setState('done');
+            setTimeout(() => { setState('idle'); onDone(); }, 3000);
+          }
+        }
+      } catch {}
+    }, 15000);
   }
 
-  const label = { idle: '▶ Run', running: 'Starting…', done: '✓ Queued', error: '✗ Failed' }[state];
-  const bg    = { idle: '#f9fafb', running: '#f3f4f6', done: '#dcfce7', error: '#fee2e2' }[state];
-  const color = { idle: '#374151', running: '#6b7280', done: '#166534', error: '#991b1b' }[state];
+  useEffect(() => () => stopPolling(), []);
+
+  const labels = {
+    idle:    '▶ Run',
+    queued:  'Queuing…',
+    polling: `⏳ ${elapsed}s`,
+    done:    '✓ Done',
+    error:   '✗ Failed',
+  };
+  const bg    = { idle: '#f9fafb', queued: '#f3f4f6', polling: '#fffbeb', done: '#dcfce7', error: '#fee2e2' }[state];
+  const color = { idle: '#374151', queued: '#6b7280', polling: '#92400e', done: '#166534', error: '#991b1b' }[state];
 
   return (
     <button
       onClick={handleRun}
       disabled={state !== 'idle'}
+      title={state === 'polling' ? 'Running on GitHub Actions — checking every 15s for completion' : undefined}
       style={{
         padding: '0.25rem 0.65rem', borderRadius: 6, fontSize: '0.8rem',
-        border: '1px solid #e5e7eb', background: bg, color, cursor: state === 'idle' ? 'pointer' : 'not-allowed',
-        whiteSpace: 'nowrap', transition: 'all 0.2s',
+        border: '1px solid #e5e7eb', background: bg, color,
+        cursor: state === 'idle' ? 'pointer' : 'not-allowed',
+        whiteSpace: 'nowrap', transition: 'background 0.2s, color 0.2s',
+        minWidth: '4.5rem', textAlign: 'center',
       }}
     >
-      {label}
+      {labels[state]}
     </button>
   );
 }
