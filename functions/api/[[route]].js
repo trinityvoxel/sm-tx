@@ -654,26 +654,25 @@ export async function onRequest(context) {
     if (!env.GITHUB_REPO)  return err('GITHUB_REPO not configured', 500);
 
     try {
-      const ghRes = await fetch(
-        `https://api.github.com/repos/${env.GITHUB_REPO}/actions/workflows/${workflow}/dispatches`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${env.GITHUB_TOKEN}`,
-            'Accept': 'application/vnd.github+json',
-            'Content-Type': 'application/json',
-            'X-GitHub-Api-Version': '2022-11-28',
-          },
-          body: JSON.stringify({ ref: 'main' }),
-        }
-      );
+      const ghUrl = `https://api.github.com/repos/${env.GITHUB_REPO}/actions/workflows/${workflow}/dispatches`;
+      const ghRes = await fetch(ghUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          'User-Agent': 'sm-tx-worker/1.0',
+        },
+        body: JSON.stringify({ ref: 'main' }),
+      });
       if (ghRes.status === 204) {
         return json({ ok: true, message: `Triggered ${workflow}` });
       }
       const ghBody = await ghRes.text();
-      return err(`GitHub API error ${ghRes.status}: ${ghBody}`, 502);
+      return err(`GitHub API error ${ghRes.status}: ${ghBody}`, 500);
     } catch (e) {
-      return err(e.message, 500);
+      return err(`fetch failed: ${e.message}`, 500);
     }
   }
 
