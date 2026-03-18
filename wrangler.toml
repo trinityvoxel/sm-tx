@@ -1,10 +1,11 @@
 name = "sm-tx"
 compatibility_date = "2024-09-23"
+pages_build_output_dir = "dist"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "sm-tx-events"
 database_id = "3c83f9e8-f37c-4d76-9548-a085f7892ade"
 
-[vars]
-API_KEY = "smtx-internal-2026"
+# API_KEY is stored as a Cloudflare Pages secret (not in this file).
+# To rotate: npx wrangler pages secret put API_KEY --project-name sm-tx
