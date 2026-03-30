@@ -47,7 +47,12 @@ async function scrapeIndustryTX(browser) {
 
         if (!name || name.length < 3) return;
 
-        console.log(`[${SOURCE}] Image for ${name}: ${imageUrl}`); // Logging extracted image URL
+        if (imgEl) {
+          console.log(`[${SOURCE}] Found imgEl for ${name}: ${imgEl.outerHTML}`);
+        } else {
+          console.log(`[${SOURCE}] imgEl not found for ${name}`);
+        }
+        console.log(`[${SOURCE}] Image URL for ${name}: ${imageUrl}`); // Logging extracted image URL
 
         results.push({
           name,
