@@ -62,12 +62,12 @@ function EventCard({ event }) {
         onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)'; e.currentTarget.style.transform = 'none'; }}
       >
         {/* Category photo header */}
-        <div style={{ position: 'relative', height: 120, overflow: 'hidden', flexShrink: 0 }}>
+        <div style={{ position: 'relative', aspectRatio: '3/2', overflow: 'hidden', flexShrink: 0, background: event.image_url ? '#0f0f0f' : undefined }}>
           <img
             src={photo}
             alt={label}
             loading="lazy"
-            className="event-card-img"
+            className={event.image_url ? 'event-card-img event-card-img--artwork' : 'event-card-img'}
           />
           {/* Category pill overlay */}
           <span style={{

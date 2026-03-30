@@ -90,8 +90,14 @@ input, select, textarea {
 /* Event card image: uniform aspect ratio, no distortion */
 .event-card-img {
   width: 100%;
-  height: 120px;
+  height: 100%;
   object-fit: cover;
-  object-position: center;
+  object-position: center top;
   display: block;
+}
+/* Real source artwork (band photos, event posters): show the whole image */
+.event-card-img--artwork {
+  object-fit: contain;
+  object-position: center;
+  background: #0f0f0f;
 }
