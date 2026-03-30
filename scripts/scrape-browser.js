@@ -32,6 +32,8 @@ const APPROVED_DOMAINS = [
   'www.cheathamstreet.com',
   'smtx.industrytx.com',
   'www.smtx.industrytx.com',
+  'summerintheparksm.org',
+  'www.summerintheparksm.org',
   // Google Calendar is loaded inside Taproom iframes — we read frames, don't navigate TO them
 ];
 
@@ -249,7 +251,12 @@ async function waitForNetworkIdle(page, timeout = 12000) {
 
 function guessCategory(text) {
   const lower = (text || '').toLowerCase();
-  if (/live\s*music|band|concert|dj\b|karaoke|bingo.*music|benefit/.test(lower)) return 'music';
+
+  // Music: be generous — generic "music" plus common live-music patterns
+  if (/(live\s*music|music\s*live|\blive\b.*\bmusic\b|\bmusic\b.*\blive\b|band|concert|dj\b|karaoke|bingo.*music|benefit)/.test(lower)) {
+    return 'music';
+  }
+
   if (/comedy|open\s*mic|improv|theater|theatre|gallery|art\s+show|art\s+market|film|movie/.test(lower)) return 'arts';
   if (/food|drink|taste|chef|culinary|eat|wine|beer|brew/.test(lower)) return 'food';
   if (/festival|fest\b/.test(lower)) return 'festivals';
@@ -1261,6 +1268,133 @@ async function scrapeIndustryTX(browser) {
   return { source: SOURCE, events };
 }
 
+// ─── SCRAPER 7: Summer in the Park (Official Site Lineup) ───────────────────
+// Page: https://summerintheparksm.org/2026-artist-lineup/
+// Structure (2026 page): each date header with a list of artist/time entries.
+
+async function scrapeSummerInThePark(browser) {
+  await upsertEventSource({
+    id: 'summer-in-the-park',
+    type: 'web',
+    name: 'Summer in the Park',
+    url: 'https://summerintheparksm.org/2026-artist-lineup/',
+    frequency: 'weekly',
+  });
+
+  const SOURCE = 'Summer in the Park';
+  const PAGE_URL = 'https://summerintheparksm.org/2026-artist-lineup/';
+  const VENUE_NAME = 'Summer in the Park';
+  const VENUE_ADDRESS = 'San Marcos Plaza Park, San Marcos, TX 78666';
+  const events = [];
+
+  const page = await browser.newPage();
+  try {
+    console.log(`\n[${SOURCE}] Navigating to ${PAGE_URL}`);
+    await safeNavigate(page, PAGE_URL, 25000);
+    await waitForNetworkIdle(page, 10000);
+    await page.waitForTimeout(3000);
+
+    // The lineup page is static HTML. Extract date + artist/time blocks.
+    const rawEvents = await page.evaluate(() => {
+      const out = [];
+
+      function text(el) {
+        return (el?.textContent || '').replace(/\s+/g, ' ').trim();
+      }
+
+      // Strategy: find headings that look like dates, then list items beneath them.
+      const candidates = Array.from(document.querySelectorAll('h2, h3, h4, strong'));
+
+      const DATE_RE = /(monday|tuesday|wednesday|thursday|friday|saturday|sunday)[,\s]+([a-z]+)\s+(\d{1,2})/i;
+
+      for (const heading of candidates) {
+        const headerText = text(heading);
+        const m = headerText.match(DATE_RE);
+        if (!m) continue;
+
+        const dateLabel = headerText;
+
+        // Collect sibling elements until the next heading of similar level
+        let node = heading.nextElementSibling;
+        const items = [];
+        while (node && !['H1','H2','H3','H4','H5','H6'].includes(node.tagName)) {
+          if (node.matches('ul,ol')) {
+            items.push(...Array.from(node.querySelectorAll('li')));
+          } else if (node.textContent.trim().length > 0) {
+            items.push(node);
+          }
+          node = node.nextElementSibling;
+        }
+
+        for (const item of items) {
+          const line = text(item);
+          if (!line || line.length < 3) continue;
+
+          // Try to split "Artist — 7:30 PM" or "Artist - 7:30pm"
+          let artist = line;
+          let time = null;
+
+          const timeMatch = line.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i);
+          if (timeMatch) {
+            time = timeMatch[1];
+            artist = line.replace(timeMatch[0], '').replace(/[–—-]/g, ' ').trim();
+          }
+
+          if (!artist || artist.length < 2) continue;
+
+          out.push({ dateLabel, artist, time, raw: line });
+        }
+      }
+
+      return out;
+    });
+
+    console.log(`[${SOURCE}] Found ${rawEvents.length} raw artist entries`);
+
+    // Convert date labels to ISO dates assuming 2026 season
+    for (const raw of rawEvents) {
+      const m = raw.dateLabel.match(/(monday|tuesday|wednesday|thursday|friday|saturday|sunday)[,\s]+([a-z]+)\s+(\d{1,2})/i);
+      if (!m) continue;
+      const monthName = m[2].toLowerCase();
+      const dayNum = parseInt(m[3], 10);
+      const monthNum = MONTH_MAP[monthName] || MONTH_MAP[monthName.slice(0,3)];
+      if (!monthNum || !dayNum) continue;
+
+      // Summer in the Park is a specific 2026 series
+      const year = 2026;
+      const isoDate = buildDate(year, monthNum, dayNum);
+      if (!isWithinLookahead(isoDate)) continue;
+
+      const name = `${raw.artist} — Summer in the Park`.slice(0, 150);
+      const desc = raw.raw;
+
+      const event = sanitize({
+        name,
+        date_start: isoDate,
+        time: raw.time || null,
+        venue_name: VENUE_NAME,
+        venue_address: VENUE_ADDRESS,
+        category: 'music',
+        description: desc,
+        url: PAGE_URL,
+        cost: 'free',
+        kid_friendly: true,
+        pet_friendly: true,
+        source: 'scraped',
+      });
+
+      if (event) events.push(event);
+    }
+  } catch (err) {
+    console.error(`[${SOURCE}] Error: ${err.message}`);
+  } finally {
+    await page.close();
+  }
+
+  console.log(`[${SOURCE}] Done — ${events.length} events`);
+  return { source: SOURCE, events };
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -1274,7 +1408,7 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   const results = [];
 
-  for (const scraper of [scrapeTaproom, scrapeVisitSanMarcos, scrapeDowntownSanMarcos, scrapeVisitSMListenLive, scrapeCheathamStreet, scrapeIndustryTX]) {
+  for (const scraper of [scrapeTaproom, scrapeVisitSanMarcos, scrapeDowntownSanMarcos, scrapeVisitSMListenLive, scrapeCheathamStreet, scrapeIndustryTX, scrapeSummerInThePark]) {
     let result;
     try {
       result = await scraper(browser);
