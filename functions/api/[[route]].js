@@ -138,9 +138,9 @@ export async function onRequest(context) {
 
       if (params.get('upcoming') === 'true') {
         const today = todayCST();
-        const future = futureDateCST(30);
+        const future = futureDateCST(90);
         // Include events that:
-        //   (a) start today or in the next 30 days, OR
+        //   (a) start today or in the next 90 days, OR
         //   (b) are multi-day events that started before today but end today or later
         // This ensures today's ongoing events always appear regardless of start time.
         query += ' AND ((date_start >= ? AND date_start <= ?) OR (date_end IS NOT NULL AND date_end >= ? AND date_start < ?))';
@@ -172,7 +172,7 @@ export async function onRequest(context) {
   if (method === 'GET' && rest === '/events/upcoming') {
     try {
       const today = todayCST();
-      const future = futureDateCST(30);
+      const future = futureDateCST(90);
       const { results } = await env.DB.prepare(
         `SELECT * FROM events WHERE status = ? AND (
           (date_start >= ? AND date_start <= ?) OR
