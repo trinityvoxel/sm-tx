@@ -1106,7 +1106,9 @@ async function scrapeCheathamStreet(browser) {
         const statusEl = item.querySelector('.eventColl-statusBtn');
         const status = statusEl?.textContent?.trim() || '';
         const imgEl = item.querySelector('.eventColl-img img.contentImg, .eventColl-img img, img.contentImg');
-        const imageUrl = imgEl?.getAttribute('src') || null;
+        console.log(`[${SOURCE}] Found image for ${raw.name}: ${imageUrl}`);
+        console.log(`[${SOURCE}] Image for ${raw.name}: ${imageUrl}`);
+        console.log(`[${SOURCE}] Image for ${raw.name}: ${imageUrl}`);
         return { month, day, name, href, time, cost, status, imageUrl };
       });
     });
