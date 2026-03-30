@@ -429,7 +429,11 @@ export async function onRequest(context) {
           const existingPriority = sourcePriority(existing.source);
           const incomingPriority = sourcePriority(newSource);
           if (incomingPriority <= existingPriority) {
-            // Keep the existing row; skip this as duplicate
+            // Keep the existing row — but opportunistically backfill image_url if missing
+            if (evt.image_url && !existing.image_url) {
+              await env.DB.prepare('UPDATE events SET image_url = ?, updated_at = ? WHERE id = ?')
+                .bind(evt.image_url, now, existing.id).run();
+            }
             skipped.push({ reason: 'duplicate', event: evt.name });
             continue;
           }
