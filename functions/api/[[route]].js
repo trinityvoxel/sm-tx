@@ -198,6 +198,32 @@ export async function onRequest(context) {
     }
   }
 
+  // ── POST /api/admin/sources/upsert ────────────────────────────────────────
+  if (method === 'POST' && rest === '/admin/sources/upsert') {
+    if (!isAuthed(request, env)) return err('Unauthorized', 401);
+    try {
+      const body = await request.json();
+      const { id, type, name, url, frequency } = body || {};
+      if (!id || !type || !name || !url) return err('Missing required fields', 400);
+      const now = new Date().toISOString();
+      await env.DB.prepare(`
+        INSERT INTO event_sources (id, type, name, url, active, frequency, last_scraped_at, created_at, updated_at)
+        VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          type = excluded.type,
+          name = excluded.name,
+          url = excluded.url,
+          active = 1,
+          frequency = excluded.frequency,
+          last_scraped_at = excluded.last_scraped_at,
+          updated_at = excluded.updated_at
+      `).bind(id, type, name, url, frequency || 'daily', now, now, now).run();
+      return json({ ok: true });
+    } catch (e) {
+      return err(e.message, 500);
+    }
+  }
+
   // ── POST /api/events/submit ───────────────────────────────────────────────
   if (method === 'POST' && rest === '/events/submit') {
     try {

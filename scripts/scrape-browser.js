@@ -30,6 +30,8 @@ const APPROVED_DOMAINS = [
   'downtownsanmarcos.org',
   'cheathamstreet.com',
   'www.cheathamstreet.com',
+  'smtx.industrytx.com',
+  'www.smtx.industrytx.com',
   // Google Calendar is loaded inside Taproom iframes — we read frames, don't navigate TO them
 ];
 
@@ -161,7 +163,7 @@ function allWeekdaysOfMonth(year, month, weekday) {
   return results;
 }
 
-// ─── HTTP POST ───────────────────────────────────────────────────────────────
+// ─── HTTP POST + Admin helpers ──────────────────────────────────────────────
 
 function postEvents(events) {
   return new Promise((resolve, reject) => {
@@ -189,6 +191,45 @@ function postEvents(events) {
     });
     req.on('error', reject);
     req.setTimeout(15000, () => { req.destroy(new Error('Request timeout')); });
+    req.write(body);
+    req.end();
+  });
+}
+
+// Upsert an event source into the admin-visible event_sources table
+function upsertEventSource({ id, type, name, url, frequency }) {
+  if (!IMPORT_KEY || DRY_RUN) return; // only do this in real runs with a key
+
+  const body = JSON.stringify({
+    id,
+    type,
+    name,
+    url,
+    frequency,
+  });
+
+  const adminUrl = new URL(process.env.SM_TX_SOURCES_ENDPOINT || 'https://sm-tx.com/api/admin/sources/upsert');
+
+  return new Promise((resolve) => {
+    const options = {
+      hostname: adminUrl.hostname,
+      port: adminUrl.port || 443,
+      path: adminUrl.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+        'X-SM-TX-Key': IMPORT_KEY,
+      },
+      timeout: 10000,
+    };
+    const proto = adminUrl.protocol === 'https:' ? https : http;
+    const req = proto.request(options, (res) => {
+      res.on('data', () => {});
+      res.on('end', () => resolve());
+    });
+    req.on('error', () => resolve()); // fail-soft; scraping should not die on admin upsert
+    req.on('timeout', () => { req.destroy(); resolve(); });
     req.write(body);
     req.end();
   });
@@ -223,6 +264,13 @@ function guessCategory(text) {
 // ─── SCRAPER 1: The Taproom San Marcos (Google Calendar Iframes) ─────────────
 
 async function scrapeTaproom(browser) {
+  await upsertEventSource({
+    id: 'taproom-san-marcos',
+    type: 'web',
+    name: 'Taproom San Marcos',
+    url: 'https://www.taproomsanmarcos.com/events',
+    frequency: 'daily',
+  });
   const SOURCE = 'Taproom San Marcos';
   const PAGE_URL = 'https://www.taproomsanmarcos.com/events';
   const VENUE_NAME = 'The Taproom San Marcos';
@@ -455,6 +503,13 @@ async function scrapeTaproom(browser) {
 // ─── SCRAPER 2: Visit San Marcos ─────────────────────────────────────────────
 
 async function scrapeVisitSanMarcos(browser) {
+  await upsertEventSource({
+    id: 'visit-san-marcos-annual',
+    type: 'web',
+    name: 'Visit San Marcos — Annual Events',
+    url: 'https://www.visitsanmarcos.com/events/annual-events-and-festivals/',
+    frequency: 'weekly',
+  });
   const SOURCE = 'Visit San Marcos';
   const DEFAULT_ADDRESS = 'San Marcos, TX 78666';
   const events = [];
@@ -699,6 +754,13 @@ async function scrapeVisitSanMarcos(browser) {
 // ─── SCRAPER 3: Downtown San Marcos ──────────────────────────────────────────
 
 async function scrapeDowntownSanMarcos(browser) {
+  await upsertEventSource({
+    id: 'downtown-san-marcos',
+    type: 'web',
+    name: 'Downtown San Marcos',
+    url: 'https://www.downtownsanmarcos.org/events',
+    frequency: 'weekly',
+  });
   const SOURCE = 'Downtown San Marcos';
   const DEFAULT_ADDRESS = 'Downtown San Marcos, TX 78666';
   const events = [];
@@ -867,6 +929,13 @@ async function scrapeDowntownSanMarcos(browser) {
 // Page is server-side rendered — uses plain HTTPS fetch + regex (no Playwright needed).
 
 async function scrapeVisitSMListenLive(_browser) {
+  await upsertEventSource({
+    id: 'visit-san-marcos-live',
+    type: 'web',
+    name: 'Visit San Marcos — Live This Week',
+    url: LISTEN_SM_URL,
+    frequency: 'daily',
+  });
   const SOURCE = 'Visit San Marcos Live Music';
   const events = [];
 
@@ -986,6 +1055,13 @@ async function scrapeVisitSMListenLive(_browser) {
 // Spacecrafted CMS — events loaded via JS. Extracts from .eventColl-item DOM nodes.
 
 async function scrapeCheathamStreet(browser) {
+  await upsertEventSource({
+    id: 'cheatham-street-warehouse',
+    type: 'web',
+    name: 'Cheatham Street Warehouse',
+    url: 'https://cheathamstreet.com/calendar',
+    frequency: 'daily',
+  });
   const SOURCE = 'Cheatham Street Warehouse';
   const VENUE_NAME = 'Cheatham Street Warehouse';
   const VENUE_ADDRESS = '119 Cheatham St, San Marcos, TX 78666';
@@ -1082,6 +1158,109 @@ async function scrapeCheathamStreet(browser) {
   return { source: SOURCE, events };
 }
 
+// ─── SCRAPER 6: Downtown Industry (Industry TX) ─────────────────────────────
+// Events page: https://smtx.industrytx.com/san-marcos-downtown-industry-san-marcos-events
+// We expect a list/grid of event cards with title, date, time, and possibly location.
+
+async function scrapeIndustryTX(browser) {
+  await upsertEventSource({
+    id: 'downtown-industry',
+    type: 'web',
+    name: 'Industry - San Marcos',
+    url: 'https://smtx.industrytx.com/san-marcos-downtown-industry-san-marcos-events',
+    frequency: 'daily',
+  });
+  const SOURCE = 'Downtown Industry';
+  const PAGE_URL = 'https://smtx.industrytx.com/san-marcos-downtown-industry-san-marcos-events';
+  const DEFAULT_VENUE = 'Downtown Industry';
+  const DEFAULT_ADDRESS = '310 Mary St, San Marcos, TX 78666'; // adjust if the page shows a different address
+  const events = [];
+
+  const page = await browser.newPage();
+  try {
+    console.log(`\n[${SOURCE}] Navigating to ${PAGE_URL}`);
+    await safeNavigate(page, PAGE_URL, 25000);
+    await waitForNetworkIdle(page, 10000);
+    await page.waitForTimeout(3000);
+
+    // Try to find event card elements — this may need tweaking once we inspect the DOM
+    const rawEvents = await page.evaluate(() => {
+      const results = [];
+
+      // Generic card selectors; adjust class names if we learn the real structure
+      const cards = document.querySelectorAll('[class*="event" i], [class*="Event" i], article, .card');
+      cards.forEach(card => {
+        const titleEl = card.querySelector('h2, h3, .event-title, [class*="title"]');
+        const dateEl  = card.querySelector('time, .event-date, [class*="date"]');
+        const timeEl  = card.querySelector('.event-time, [class*="time"]');
+        const linkEl  = card.querySelector('a[href]');
+        const locEl   = card.querySelector('.event-location, [class*="location"], [class*="venue"]');
+        const descEl  = card.querySelector('p, .description');
+
+        const name = titleEl?.textContent?.trim() || '';
+        const dateText = dateEl?.getAttribute('datetime') || dateEl?.textContent || '';
+        const timeText = timeEl?.textContent || '';
+        const href = linkEl?.getAttribute('href') || '';
+        const locationText = locEl?.textContent || '';
+        const description = descEl?.textContent || '';
+
+        if (!name || name.length < 3) return;
+
+        results.push({
+          name,
+          dateText: dateText.trim(),
+          timeText: timeText.trim(),
+          href,
+          locationText: locationText.trim(),
+          description: description.trim(),
+        });
+      });
+
+      return results;
+    });
+
+    console.log(`[${SOURCE}] Found ${rawEvents.length} raw event cards`);
+
+    for (const raw of rawEvents) {
+      const isoDate = toISO(raw.dateText) || null;
+      if (!isoDate || !isWithinLookahead(isoDate)) continue;
+
+      // Extract a clean time if present
+      const timeMatch = raw.timeText.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i);
+      const time = timeMatch ? timeMatch[1] : undefined;
+
+      const venue_name = raw.locationText && raw.locationText.length > 3
+        ? raw.locationText
+        : DEFAULT_VENUE;
+
+      const eventUrl = raw.href
+        ? (raw.href.startsWith('http') ? raw.href : new URL(raw.href, PAGE_URL).href)
+        : PAGE_URL;
+
+      const event = sanitize({
+        name: raw.name.slice(0, 150),
+        date_start: isoDate,
+        time,
+        venue_name,
+        venue_address: DEFAULT_ADDRESS,
+        category: guessCategory(`${raw.name} ${raw.description}`),
+        description: raw.description ? raw.description.slice(0, 500) : undefined,
+        url: eventUrl,
+        source: 'scraped',
+      });
+
+      if (event) events.push(event);
+    }
+  } catch (err) {
+    console.error(`[${SOURCE}] Error: ${err.message}`);
+  } finally {
+    await page.close();
+  }
+
+  console.log(`[${SOURCE}] Done — ${events.length} events`);
+  return { source: SOURCE, events };
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -1095,7 +1274,7 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   const results = [];
 
-  for (const scraper of [scrapeTaproom, scrapeVisitSanMarcos, scrapeDowntownSanMarcos, scrapeVisitSMListenLive, scrapeCheathamStreet]) {
+  for (const scraper of [scrapeTaproom, scrapeVisitSanMarcos, scrapeDowntownSanMarcos, scrapeVisitSMListenLive, scrapeCheathamStreet, scrapeIndustryTX]) {
     let result;
     try {
       result = await scraper(browser);
