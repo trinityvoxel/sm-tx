@@ -198,6 +198,31 @@ export async function onRequest(context) {
     }
   }
 
+  // ── POST /api/admin/fix-industry-categories ──────────────────────────────
+  if (method === 'POST' && rest === '/admin/fix-industry-categories') {
+    if (!isAuthed(request, env)) return err('Unauthorized', 401);
+    try {
+      const now = new Date().toISOString();
+      const stmt = env.DB.prepare(`
+        UPDATE events
+        SET category = 'music',
+            updated_at = ?
+        WHERE venue_name = 'Industry - San Marcos'
+          AND status = 'approved'
+          AND category = 'community'
+          AND (
+            lower(name) LIKE '%music%'
+            OR lower(description) LIKE '%music%'
+            OR name IN ('Drew')
+          )
+      `);
+      const { success, changes } = await stmt.bind(now).run();
+      return json({ ok: true, updated: changes ?? 0 });
+    } catch (e) {
+      return err(e.message, 500);
+    }
+  }
+
   // ── POST /api/admin/sources/upsert ────────────────────────────────────────
   if (method === 'POST' && rest === '/admin/sources/upsert') {
     if (!isAuthed(request, env)) return err('Unauthorized', 401);
