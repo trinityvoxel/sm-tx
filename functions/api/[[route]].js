@@ -444,6 +444,10 @@ export async function onRequest(context) {
               vals.push(evt[f]);
             }
           }
+          if (evt.image_url && !existing.image_url) {
+            updates.push('image_url = ?');
+            vals.push(evt.image_url);
+          }
           updates.push('source = ?');
           vals.push(newSource);
           updates.push('updated_at = ?');
@@ -463,15 +467,15 @@ export async function onRequest(context) {
             id, source, status, name, date_start, date_end, time,
             venue_name, venue_address, category, description, url, cost,
             kid_friendly, pet_friendly, age_21_plus,
-            submitter_name, submitter_email, created_at, updated_at
-          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            image_url, submitter_name, submitter_email, created_at, updated_at
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         `).bind(
           id, newSource, 'approved',
           evt.name, evt.date_start, evt.date_end || null, evt.time || null,
           evt.venue_name, evt.venue_address, evt.category,
           evt.description || null, evt.url || null, evt.cost || 'free',
           evt.kid_friendly ? 1 : 0, evt.pet_friendly ? 1 : 0, evt.age_21_plus ? 1 : 0,
-          null, null,
+          evt.image_url || null, null, null,
           now, now
         ).run();
         inserted.push({ id, name: evt.name });

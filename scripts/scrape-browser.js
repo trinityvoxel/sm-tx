@@ -1105,7 +1105,9 @@ async function scrapeCheathamStreet(browser) {
         const cost  = priceEl?.textContent?.trim() || '';
         const statusEl = item.querySelector('.eventColl-statusBtn');
         const status = statusEl?.textContent?.trim() || '';
-        return { month, day, name, href, time, cost, status };
+        const imgEl = item.querySelector('.eventColl-img img.contentImg, .eventColl-img img, img.contentImg');
+        const imageUrl = imgEl?.getAttribute('src') || null;
+        return { month, day, name, href, time, cost, status, imageUrl };
       });
     });
 
@@ -1148,6 +1150,7 @@ async function scrapeCheathamStreet(browser) {
         url,
         cost: raw.cost || 'varies',
         age_21_plus: true,
+        image_url: raw.imageUrl || null,
         source: 'scraped',
       });
       if (event) {
@@ -1195,14 +1198,15 @@ async function scrapeIndustryTX(browser) {
       const results = [];
 
       // Generic card selectors; adjust class names if we learn the real structure
-      const cards = document.querySelectorAll('[class*="event" i], [class*="Event" i], article, .card');
+      const cards = document.querySelectorAll('section .row.event-content');
       cards.forEach(card => {
-        const titleEl = card.querySelector('h2, h3, .event-title, [class*="title"]');
-        const dateEl  = card.querySelector('time, .event-date, [class*="date"]');
+        const titleEl = card.querySelector('h2, .event-title, [class*="title"]');
+        const dateEl  = card.querySelector('h3, time, .event-date, [class*="date"]');
         const timeEl  = card.querySelector('.event-time, [class*="time"]');
         const linkEl  = card.querySelector('a[href]');
         const locEl   = card.querySelector('.event-location, [class*="location"], [class*="venue"]');
-        const descEl  = card.querySelector('p, .description');
+        const descEl  = card.querySelector('.event-info-text p, p, .description');
+        const imgEl   = card.querySelector('.event-image-holder img, img');
 
         const name = titleEl?.textContent?.trim() || '';
         const dateText = dateEl?.getAttribute('datetime') || dateEl?.textContent || '';
@@ -1210,6 +1214,7 @@ async function scrapeIndustryTX(browser) {
         const href = linkEl?.getAttribute('href') || '';
         const locationText = locEl?.textContent || '';
         const description = descEl?.textContent || '';
+        const imageUrl = imgEl?.getAttribute('src') || '';
 
         if (!name || name.length < 3) return;
 
@@ -1220,6 +1225,7 @@ async function scrapeIndustryTX(browser) {
           href,
           locationText: locationText.trim(),
           description: description.trim(),
+          imageUrl: imageUrl ? (imageUrl.startsWith('http') ? imageUrl : `${location.protocol}//${location.host}${imageUrl}`) : null,
         });
       });
 
@@ -1253,6 +1259,7 @@ async function scrapeIndustryTX(browser) {
         category: guessCategory(`${raw.name} ${raw.description}`),
         description: raw.description ? raw.description.slice(0, 500) : undefined,
         url: eventUrl,
+        image_url: raw.imageUrl || null,
         source: 'scraped',
       });
 
