@@ -429,8 +429,8 @@ export async function onRequest(context) {
           const existingPriority = sourcePriority(existing.source);
           const incomingPriority = sourcePriority(newSource);
           if (incomingPriority <= existingPriority) {
-            // Keep the existing row — but opportunistically backfill image_url if missing
-            if (evt.image_url && !existing.image_url) {
+            // Keep the existing row — but always backfill/fix image_url if scraper found one
+            if (evt.image_url && evt.image_url !== existing.image_url) {
               await env.DB.prepare('UPDATE events SET image_url = ?, updated_at = ? WHERE id = ?')
                 .bind(evt.image_url, now, existing.id).run();
             }
@@ -448,7 +448,7 @@ export async function onRequest(context) {
               vals.push(evt[f]);
             }
           }
-          if (evt.image_url && !existing.image_url) {
+          if (evt.image_url && evt.image_url !== existing.image_url) {
             updates.push('image_url = ?');
             vals.push(evt.image_url);
           }
