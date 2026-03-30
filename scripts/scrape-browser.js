@@ -1302,48 +1302,39 @@ async function scrapeSummerInThePark(browser) {
         return (el?.textContent || '').replace(/\s+/g, ' ').trim();
       }
 
-      // Strategy: find headings that look like dates, then list items beneath them.
-      const candidates = Array.from(document.querySelectorAll('h2, h3, h4, strong'));
+      // Strategy: find date headings like "June 4th" and grab the artist block + image beneath.
+      // Each lineup block lives inside a .wp-block-column wrapper.
+      const dateHeadings = Array.from(document.querySelectorAll('.wp-block-column .wp-block-heading'));
 
-      const DATE_RE = /(monday|tuesday|wednesday|thursday|friday|saturday|sunday)[,\s]+([a-z]+)\s+(\d{1,2})/i;
-
-      for (const heading of candidates) {
+      for (const heading of dateHeadings) {
         const headerText = text(heading);
-        const m = headerText.match(DATE_RE);
+        const m = headerText.match(/^([A-Za-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?$/i);
         if (!m) continue;
 
         const dateLabel = headerText;
+        const column = heading.closest('.wp-block-column') || heading.parentElement;
+        if (!column) continue;
 
-        // Collect sibling elements until the next heading of similar level
-        let node = heading.nextElementSibling;
-        const items = [];
-        while (node && !['H1','H2','H3','H4','H5','H6'].includes(node.tagName)) {
-          if (node.matches('ul,ol')) {
-            items.push(...Array.from(node.querySelectorAll('li')));
-          } else if (node.textContent.trim().length > 0) {
-            items.push(node);
-          }
+        // Artist name is the first h4.wp-block-heading inside this column after the date
+        const artistHeading = column.querySelector('h4.wp-block-heading, h4');
+        if (!artistHeading) continue;
+
+        const artist = text(artistHeading);
+        if (!artist || artist.length < 2) continue;
+
+        // Description: first non-empty <p> after the artist heading within this column
+        let desc = '';
+        let node = artistHeading.nextElementSibling;
+        while (node && !desc) {
+          if (node.tagName === 'P') desc = text(node);
           node = node.nextElementSibling;
         }
 
-        for (const item of items) {
-          const line = text(item);
-          if (!line || line.length < 3) continue;
+        // Image: first <img> inside this column
+        const imgEl = column.querySelector('img');
+        const imageUrl = imgEl?.src || null;
 
-          // Try to split "Artist — 7:30 PM" or "Artist - 7:30pm"
-          let artist = line;
-          let time = null;
-
-          const timeMatch = line.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i);
-          if (timeMatch) {
-            time = timeMatch[1];
-            artist = line.replace(timeMatch[0], '').replace(/[–—-]/g, ' ').trim();
-          }
-
-          if (!artist || artist.length < 2) continue;
-
-          out.push({ dateLabel, artist, time, raw: line });
-        }
+        out.push({ dateLabel, artist, time: null, raw: desc || artist, imageUrl });
       }
 
       return out;
@@ -1353,10 +1344,10 @@ async function scrapeSummerInThePark(browser) {
 
     // Convert date labels to ISO dates assuming 2026 season
     for (const raw of rawEvents) {
-      const m = raw.dateLabel.match(/(monday|tuesday|wednesday|thursday|friday|saturday|sunday)[,\s]+([a-z]+)\s+(\d{1,2})/i);
+      const m = raw.dateLabel.match(/^([A-Za-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?$/i);
       if (!m) continue;
-      const monthName = m[2].toLowerCase();
-      const dayNum = parseInt(m[3], 10);
+      const monthName = m[1].toLowerCase();
+      const dayNum = parseInt(m[2], 10);
       const monthNum = MONTH_MAP[monthName] || MONTH_MAP[monthName.slice(0,3)];
       if (!monthNum || !dayNum) continue;
 
@@ -1380,6 +1371,7 @@ async function scrapeSummerInThePark(browser) {
         cost: 'free',
         kid_friendly: true,
         pet_friendly: true,
+        image_url: raw.imageUrl || null,
         source: 'scraped',
       });
 

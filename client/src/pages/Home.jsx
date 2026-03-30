@@ -38,7 +38,7 @@ function parseTimeToMinutes(timeStr) {
 function EventCard({ event }) {
   const color = CATEGORY_COLORS[event.category] || '#6b7280';
   const label = CATEGORY_LABELS[event.category] || event.category;
-  const photo = CATEGORY_PHOTOS[event.category] || CATEGORY_PHOTOS.other;
+  const photo = event.image_url || CATEGORY_PHOTOS[event.category] || CATEGORY_PHOTOS.other;
   const dateStr = event.date_end && event.date_end !== event.date_start
     ? `${formatDate(event.date_start)} – ${formatDate(event.date_end)}`
     : formatDate(event.date_start);

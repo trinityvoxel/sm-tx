@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS events (
   kid_friendly    INTEGER NOT NULL DEFAULT 0,
   pet_friendly    INTEGER NOT NULL DEFAULT 0,
   age_21_plus     INTEGER NOT NULL DEFAULT 0,
+  image_url       TEXT,
   submitter_name  TEXT,
   submitter_email TEXT,
   created_at      TEXT NOT NULL,
