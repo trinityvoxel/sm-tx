@@ -1240,7 +1240,9 @@ async function scrapeIndustryTX(browser) {
           href,
           locationText: locationText.trim(),
           description: description.trim(),
-          imageUrl: imageUrl ? (imageUrl.startsWith('http') ? imageUrl : `${location.protocol}//${location.host}${imageUrl}`) : null,
+          imageUrl: imageUrl
+            ? (imageUrl.startsWith('http') ? imageUrl : imageUrl.startsWith('//') ? 'https:' + imageUrl : `${location.protocol}//${location.host}${imageUrl}`)
+            : null,
         });
       });
 
