@@ -429,6 +429,7 @@ export async function onRequest(context) {
           const existingPriority = sourcePriority(existing.source);
           const incomingPriority = sourcePriority(newSource);
           if (incomingPriority <= existingPriority) {
+            // Image display priority: 1) image_override (future admin) 2) image_url (scraped) 3) Poster card (frontend fallback)
             // Keep the existing row — but always backfill/fix image_url if scraper found one
             if (evt.image_url && evt.image_url !== existing.image_url) {
               await env.DB.prepare('UPDATE events SET image_url = ?, updated_at = ? WHERE id = ?')

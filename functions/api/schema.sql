@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS events (
   pet_friendly    INTEGER NOT NULL DEFAULT 0,
   age_21_plus     INTEGER NOT NULL DEFAULT 0,
   image_url       TEXT,
+  -- image_override: future admin manual override (takes priority over image_url)
+  -- Image display priority: 1) image_override  2) image_url (scraped)  3) Poster card (frontend fallback — no DB field needed)
+  image_override  TEXT,
   submitter_name  TEXT,
   submitter_email TEXT,
   created_at      TEXT NOT NULL,

@@ -6,21 +6,23 @@ import Head from '../components/Head.jsx';
 const RIVERBEND_PHOTO = 'https://hostaway-platform.s3.us-west-2.amazonaws.com/listing/87999-297530-DcPs67WuOwB5o7P5GqtCvFN32E8cRhwrrp8RMIlPoa8-68efd79c87e31';
 const RIVERBEND_URL = 'https://www.cohostr.com/listings/297530';
 
-const CATEGORY_PHOTOS = {
-  music:    'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400&h=120&fit=crop&q=70',
-  sports:   'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=400&h=120&fit=crop&q=70',
-  arts:     'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=400&h=120&fit=crop&q=70',
-  nightlife:'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=120&fit=crop&q=70',
-  markets:  'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=400&h=120&fit=crop&q=70',
-  festivals:'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=400&h=120&fit=crop&q=70',
-  community:'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400&h=120&fit=crop&q=70',
-  other:    'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=400&h=120&fit=crop&q=70',
-};
-
 function formatDate(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr + 'T12:00:00');
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function getPosterCardUrl(event) {
+  const dateStr = event.date_end && event.date_end !== event.date_start
+    ? `${formatDate(event.date_start)} – ${formatDate(event.date_end)}`
+    : formatDate(event.date_start);
+  const params = new URLSearchParams({
+    title: event.name,
+    date: dateStr,
+    venue: event.venue_name || 'San Marcos, TX',
+    category: event.category || 'other',
+  });
+  return `/api/event-card?${params.toString()}`;
 }
 
 function parseTimeToMinutes(timeStr) {
@@ -38,7 +40,7 @@ function parseTimeToMinutes(timeStr) {
 function EventCard({ event }) {
   const color = CATEGORY_COLORS[event.category] || '#6b7280';
   const label = CATEGORY_LABELS[event.category] || event.category;
-  const photo = event.image_url || CATEGORY_PHOTOS[event.category] || CATEGORY_PHOTOS.other;
+  const photo = event.image_url || getPosterCardUrl(event);
   const dateStr = event.date_end && event.date_end !== event.date_start
     ? `${formatDate(event.date_start)} – ${formatDate(event.date_end)}`
     : formatDate(event.date_start);
@@ -62,12 +64,12 @@ function EventCard({ event }) {
         onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)'; e.currentTarget.style.transform = 'none'; }}
       >
         {/* Category photo header */}
-        <div style={{ position: 'relative', aspectRatio: '3/2', overflow: 'hidden', flexShrink: 0, background: event.image_url ? '#0f0f0f' : undefined }}>
+        <div style={{ position: 'relative', aspectRatio: '3/2', overflow: 'hidden', flexShrink: 0, background: '#0f0f0f' }}>
           <img
             src={photo}
             alt={label}
             loading="lazy"
-            className={event.image_url ? 'event-card-img event-card-img--artwork' : 'event-card-img'}
+            className="event-card-img event-card-img--artwork"
           />
           {/* Category pill overlay */}
           <span style={{

@@ -145,6 +145,17 @@ export default function EventDetail() {
           {/* Color accent bar */}
           <div style={{ height: 6, background: color }} />
 
+          {/* Hero image — only when a scraped image_url is available */}
+          {event.image_url && (
+            <div style={{ width: '100%', maxHeight: 360, overflow: 'hidden', background: '#0f0f0f' }}>
+              <img
+                src={event.image_url}
+                alt={event.name}
+                style={{ width: '100%', height: 'auto', maxHeight: 360, objectFit: 'cover', objectPosition: 'center top', display: 'block' }}
+              />
+            </div>
+          )}
+
           <div style={{ padding: '1.5rem' }}>
             {/* Category badge */}
             <span style={{
