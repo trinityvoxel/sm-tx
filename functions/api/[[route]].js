@@ -483,6 +483,18 @@ export async function onRequest(context) {
           evt.image_url || null, null, null,
           now, now
         ).run();
+
+        // Enqueue for AI image generation if no image was provided
+        if (!evt.image_url && env.IMAGE_QUEUE) {
+          await env.IMAGE_QUEUE.send({
+            eventId: id,
+            title: evt.name,
+            category: evt.category || 'other',
+            venue: evt.venue_name || 'San Marcos, TX',
+            dateStart: evt.date_start,
+          }).catch(() => {}); // fire-and-forget, don't block import
+        }
+
         inserted.push({ id, name: evt.name });
       }
       return json({ inserted: inserted.length, skipped: skipped.length, details: { inserted, skipped } }, 201);
@@ -507,6 +519,18 @@ export async function onRequest(context) {
       if (action === 'approve') {
         await env.DB.prepare("UPDATE events SET status = 'approved', updated_at = ? WHERE id = ?")
           .bind(new Date().toISOString(), evtId).run();
+
+        // Enqueue for AI image generation if the event has no image
+        if (!event.image_url && env.IMAGE_QUEUE) {
+          await env.IMAGE_QUEUE.send({
+            eventId: evtId,
+            title: event.name,
+            category: event.category || 'other',
+            venue: event.venue_name || 'San Marcos, TX',
+            dateStart: event.date_start,
+          }).catch(() => {}); // fire-and-forget
+        }
+
         return htmlPage(
           'Event Approved',
           '✅',
