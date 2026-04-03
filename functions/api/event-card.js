@@ -20,11 +20,33 @@ const CATEGORY_MAP = {
 const FALLBACK = CATEGORY_MAP.other;
 
 /**
- * Sanitize a string: strip HTML/script tags and XML-unsafe chars.
+ * Decode common HTML entities (e.g. &#38; → &, &amp; → &, &quot; → ")
+ * so they display correctly in the SVG text.
+ */
+function decodeHtmlEntities(str) {
+  if (!str) return '';
+  return String(str)
+    // Named entities
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&apos;/gi, "'")
+    .replace(/&nbsp;/gi, ' ')
+    // Decimal numeric entities (e.g. &#38;)
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    // Hex numeric entities (e.g. &#x26;)
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+}
+
+/**
+ * Sanitize a string: decode HTML entities first, then strip HTML/script tags
+ * and XML-escape for safe SVG embedding.
  */
 function sanitize(str) {
   if (!str) return '';
-  return String(str)
+  return decodeHtmlEntities(String(str))
     .replace(/<[^>]*>/g, '')           // strip HTML tags
     .replace(/[&<>"']/g, (c) => ({     // XML-escape remaining special chars
       '&': '&amp;',
