@@ -223,6 +223,41 @@ export async function onRequest(context) {
     }
   }
 
+  // ── POST /api/admin/clear-generated-images ──────────────────────────────
+  // Clears AI-generated event images so the frontend falls back to poster cards.
+  // Keeps scraped/source images intact.
+  if (method === 'POST' && rest === '/admin/clear-generated-images') {
+    if (!isAuthed(request, env)) return err('Unauthorized', 401);
+    try {
+      const now = new Date().toISOString();
+      const where = `
+        image_url IS NOT NULL
+        AND image_url != ''
+        AND (
+          image_url LIKE 'https://pub-images.sm-tx.com/events/%'
+          OR image_url LIKE 'http://pub-images.sm-tx.com/events/%'
+        )
+      `;
+      const { results: affected } = await env.DB.prepare(`
+        SELECT id, name, date_start, venue_name, image_url
+        FROM events
+        WHERE ${where}
+        ORDER BY date_start ASC, name ASC
+      `).all();
+
+      const { changes } = await env.DB.prepare(`
+        UPDATE events
+        SET image_url = NULL,
+            updated_at = ?
+        WHERE ${where}
+      `).bind(now).run();
+
+      return json({ ok: true, cleared: changes ?? 0, affected });
+    } catch (e) {
+      return err(e.message, 500);
+    }
+  }
+
   // ── POST /api/admin/sources/upsert ────────────────────────────────────────
   if (method === 'POST' && rest === '/admin/sources/upsert') {
     if (!isAuthed(request, env)) return err('Unauthorized', 401);
@@ -328,7 +363,7 @@ export async function onRequest(context) {
     try {
       const body = await request.json();
       const allowed = ['name','date_start','date_end','time','venue_name','venue_address',
-        'category','description','url','cost','kid_friendly','pet_friendly','age_21_plus','status','source'];
+        'category','description','url','cost','kid_friendly','pet_friendly','age_21_plus','status','source','image_url'];
       const sets = [];
       const vals = [];
       for (const key of allowed) {
@@ -484,17 +519,6 @@ export async function onRequest(context) {
           now, now
         ).run();
 
-        // Enqueue for AI image generation if no image was provided
-        if (!evt.image_url && env.IMAGE_QUEUE) {
-          await env.IMAGE_QUEUE.send({
-            eventId: id,
-            title: evt.name,
-            category: evt.category || 'other',
-            venue: evt.venue_name || 'San Marcos, TX',
-            dateStart: evt.date_start,
-          }).catch(() => {}); // fire-and-forget, don't block import
-        }
-
         inserted.push({ id, name: evt.name });
       }
       return json({ inserted: inserted.length, skipped: skipped.length, details: { inserted, skipped } }, 201);
@@ -519,17 +543,6 @@ export async function onRequest(context) {
       if (action === 'approve') {
         await env.DB.prepare("UPDATE events SET status = 'approved', updated_at = ? WHERE id = ?")
           .bind(new Date().toISOString(), evtId).run();
-
-        // Enqueue for AI image generation if the event has no image
-        if (!event.image_url && env.IMAGE_QUEUE) {
-          await env.IMAGE_QUEUE.send({
-            eventId: evtId,
-            title: event.name,
-            category: event.category || 'other',
-            venue: event.venue_name || 'San Marcos, TX',
-            dateStart: event.date_start,
-          }).catch(() => {}); // fire-and-forget
-        }
 
         return htmlPage(
           'Event Approved',

@@ -7,13 +7,8 @@ binding = "DB"
 database_name = "sm-tx-events"
 database_id = "3c83f9e8-f37c-4d76-9548-a085f7892ade"
 
-[[queues.producers]]
-queue = "sm-tx-image-gen"
-binding = "IMAGE_QUEUE"
-
-# Note: R2 bucket (sm-tx-images) is bound in the standalone sm-tx-image-worker,
-# not here. The Pages Function only produces to the queue; the Worker does R2 I/O.
-# To add R2 binding here if needed, first enable R2 in the Cloudflare Dashboard.
+# AI-generated event images are disabled. Events without scraped/source images
+# should use the frontend poster-card fallback instead of queueing generation.
 
 # Secrets (set via wrangler pages secret put --project-name sm-tx):
 # API_KEY — admin API key
