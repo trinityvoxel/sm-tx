@@ -963,7 +963,9 @@ async function scrapeVisitSMListenLive(_browser) {
 
   const MONTH_NUMS = {
     JAN:1, FEB:2, MAR:3, APR:4, MAY:5, JUN:6,
-    JUL:7, AUG:8, SEP:9, OCT:10, NOV:11, DEC:12
+    JUL:7, AUG:8, SEP:9, OCT:10, NOV:11, DEC:12,
+    JANUARY:1, FEBRUARY:2, MARCH:3, APRIL:4, JUNE:6,
+    JULY:7, AUGUST:8, SEPTEMBER:9, OCTOBER:10, NOVEMBER:11, DECEMBER:12
   };
 
   console.log(`\n[${SOURCE}] Fetching ${LISTEN_SM_URL}`);
@@ -1011,8 +1013,8 @@ async function scrapeVisitSMListenLive(_browser) {
       if (headerClose === -1) continue;
       const headerText = stripTags(section.slice(0, headerClose));
 
-      // Must be a day header: "WEDNESDAY - FEB 25"
-      const dayMatch = headerText.match(/[A-Z]+DAY\s*[-–]\s*(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+(\d{1,2})/i);
+      // Must be a day header: "WEDNESDAY - FEB 25" or "WEDNESDAY - JUNE 10"
+      const dayMatch = headerText.match(/[A-Z]+DAY\s*[-–]\s*(JAN(?:UARY)?|FEB(?:RUARY)?|MAR(?:CH)?|APR(?:IL)?|MAY|JUN(?:E)?|JUL(?:Y)?|AUG(?:UST)?|SEP(?:TEMBER)?|OCT(?:OBER)?|NOV(?:EMBER)?|DEC(?:EMBER)?)\s+(\d{1,2})/i);
       if (!dayMatch) continue;
 
       const mon = MONTH_NUMS[dayMatch[1].toUpperCase()];
