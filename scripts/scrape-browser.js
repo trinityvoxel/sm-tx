@@ -283,6 +283,31 @@ function guessCategory(text) {
   return 'community';
 }
 
+function stripHtml(s) {
+  return String(s || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&apos;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&#8217;/g, "'")
+    .replace(/&#xA0;/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#8211;/g, '–')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function absoluteUrl(base, maybePath) {
+  if (!maybePath) return base;
+  try { return new URL(maybePath, base).href; }
+  catch { return base; }
+}
+
 // ─── SCRAPER 1: The Taproom San Marcos (Google Calendar Iframes) ─────────────
 
 async function scrapeTaproom(browser) {
@@ -767,6 +792,117 @@ async function scrapeVisitSanMarcos(browser) {
         }
       }
     }
+  }
+
+  console.log(`[${SOURCE}] Total events: ${events.length}`);
+  return { source: SOURCE, events };
+}
+
+// ─── SCRAPER 2B: Visit San Marcos — Main Events Calendar ───────────────────
+// Simpleview widget backed by /includes/rest_v2/plugins_events_events_by_date/find/
+
+async function scrapeVisitSanMarcosCalendar(browser) {
+  const PAGE_URL = 'https://www.visitsanmarcos.com/events/';
+  await upsertEventSource({
+    id: 'visit-san-marcos-calendar',
+    type: 'web',
+    name: 'Visit San Marcos — Events Calendar',
+    url: PAGE_URL,
+    frequency: 'daily',
+  });
+
+  const SOURCE = 'Visit San Marcos Calendar';
+  const events = [];
+  const page = await browser.newPage();
+
+  try {
+    console.log(`\n[${SOURCE}] Navigating to ${PAGE_URL}`);
+    await safeNavigate(page, PAGE_URL, 35000);
+    await waitForNetworkIdle(page, 10000);
+
+    const docs = await page.evaluate(async ({ todayIso, lookaheadIso }) => {
+      function getToken() {
+        return new Promise(resolve => {
+          if (typeof window.require !== 'function') return resolve(null);
+          try {
+            window.require(['plugins_core/main'], core => resolve(core && core.simpleToken ? core.simpleToken : null));
+            setTimeout(() => resolve(null), 10000);
+          } catch {
+            resolve(null);
+          }
+        });
+      }
+
+      const token = await getToken();
+      if (!token) throw new Error('Could not read Simpleview token');
+
+      const endpoint = '/includes/rest_v2/plugins_events_events_by_date/find/';
+      const filter = {
+        active: true,
+        $and: [{ 'categories.catId': { $in: ['67', '65', '59', '60', '66', '61', '62', '63'] } }],
+        'dates.eventDate': {
+          $gte: { $date: `${todayIso}T00:00:00.000Z` },
+          $lte: { $date: `${lookaheadIso}T23:59:59.000Z` },
+        },
+      };
+
+      const all = [];
+      // Keep batches small; Simpleview returns HTTP 500 if a single result set exceeds
+      // its internal maxSize, even when the overall query is valid.
+      const limit = 25;
+      for (let skip = 0; skip < 1000; skip += limit) {
+        const options = {
+          limit,
+          skip,
+          count: true,
+          castDocs: false,
+          sort: { date: 1, rank: 1, title_sort: 1 },
+        };
+        const url = `${endpoint}?json=${encodeURIComponent(JSON.stringify({ filter, options }))}&token=${encodeURIComponent(token)}`;
+        const res = await fetch(url, { credentials: 'same-origin' });
+        if (!res.ok) throw new Error(`Simpleview API HTTP ${res.status}: ${(await res.text()).slice(0, 120)}`);
+        const json = await res.json();
+        const batch = json?.docs?.docs || [];
+        all.push(...batch);
+        const count = json?.docs?.count || all.length;
+        if (all.length >= count || batch.length === 0) break;
+      }
+      return all;
+    }, { todayIso: fmtDate(TODAY), lookaheadIso: fmtDate(LOOKAHEAD_DATE) });
+
+    console.log(`[${SOURCE}] Simpleview returned ${docs.length} raw event occurrences`);
+
+    for (const doc of docs) {
+      const name = String(doc.title || '').trim();
+      if (!name || name.length < 3) continue;
+
+      const date_start = doc.date ? fmtDate(new Date(doc.date)) : toISO(doc.startDate);
+      if (!isWithinLookahead(date_start)) continue;
+
+      const categoryText = Array.isArray(doc.categories)
+        ? doc.categories.map(c => c.catName || '').join(' ')
+        : '';
+      const venueName = doc.location || doc.hostname || doc.listing?.title || 'San Marcos';
+      const addressParts = [doc.address1, doc.address2, doc.city || 'San Marcos', doc.state || 'TX', doc.zip].filter(Boolean);
+      const description = stripHtml(doc.description).slice(0, 500) || undefined;
+
+      const event = {
+        name: name.slice(0, 150),
+        date_start,
+        venue_name: String(venueName).slice(0, 150),
+        venue_address: addressParts.length ? addressParts.join(', ') : 'San Marcos, TX',
+        category: guessCategory(`${name} ${categoryText} ${description || ''}`),
+        description,
+        url: absoluteUrl(PAGE_URL, doc.url || doc.linkUrl),
+        source: 'scraped',
+        cost: doc.admission ? String(doc.admission).slice(0, 100) : undefined,
+      };
+
+      const clean = sanitize(event);
+      if (clean) events.push(clean);
+    }
+  } finally {
+    await page.close();
   }
 
   console.log(`[${SOURCE}] Total events: ${events.length}`);
@@ -1426,7 +1562,7 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   const results = [];
 
-  for (const scraper of [scrapeTaproom, scrapeVisitSanMarcos, scrapeDowntownSanMarcos, scrapeVisitSMListenLive, scrapeCheathamStreet, scrapeIndustryTX, scrapeSummerInThePark]) {
+  for (const scraper of [scrapeTaproom, scrapeVisitSanMarcos, scrapeVisitSanMarcosCalendar, scrapeDowntownSanMarcos, scrapeVisitSMListenLive, scrapeCheathamStreet, scrapeIndustryTX, scrapeSummerInThePark]) {
     let result;
     try {
       result = await scraper(browser);
