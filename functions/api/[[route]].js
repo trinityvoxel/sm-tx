@@ -101,6 +101,45 @@ function parsePath(url) {
   return rest;
 }
 
+const SCRAPER_WORKFLOW_MAP = {
+  'smtx-event-scraper':   'event-scraper.yml',
+  'smtx-browser-scraper': 'browser-scraper.yml',
+};
+
+async function getWorkflowState(env, workflow) {
+  if (!env.GITHUB_TOKEN || !env.GITHUB_REPO) return null;
+  const ghUrl = `https://api.github.com/repos/${env.GITHUB_REPO}/actions/workflows/${workflow}`;
+  const ghRes = await fetch(ghUrl, {
+    headers: {
+      'Authorization': `Bearer ${env.GITHUB_TOKEN}`,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'User-Agent': 'sm-tx-worker/1.0',
+    },
+  });
+  if (!ghRes.ok) return null;
+  const body = await ghRes.json();
+  return body.state || null;
+}
+
+async function annotateJobsWithWorkflowState(jobs, env) {
+  return Promise.all(jobs.map(async job => {
+    const workflow = SCRAPER_WORKFLOW_MAP[job.id];
+    if (!workflow) return job;
+
+    const workflowState = await getWorkflowState(env, workflow).catch(() => null);
+    if (!workflowState) return job;
+
+    return {
+      ...job,
+      enabled: workflowState === 'active' ? 1 : 0,
+      workflow,
+      workflow_state: workflowState,
+      enabled_source: 'github_actions',
+    };
+  }));
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const method = request.method.toUpperCase();
@@ -683,7 +722,8 @@ export async function onRequest(context) {
     if (!isAuthed(request, env)) return err('Unauthorized', 401);
     try {
       const { results } = await env.DB.prepare('SELECT * FROM jobs ORDER BY id').all();
-      return json(results);
+      const jobs = await annotateJobsWithWorkflowState(results, env);
+      return json(jobs);
     } catch (e) {
       return err(e.message, 500);
     }
@@ -741,11 +781,7 @@ export async function onRequest(context) {
     if (!isAuthed(request, env)) return err('Unauthorized', 401);
     const jobId = triggerMatch[1];
 
-    const WORKFLOW_MAP = {
-      'smtx-event-scraper':   'event-scraper.yml',
-      'smtx-browser-scraper': 'browser-scraper.yml',
-    };
-    const workflow = WORKFLOW_MAP[jobId];
+    const workflow = SCRAPER_WORKFLOW_MAP[jobId];
     if (!workflow) return err(`No workflow mapped for job: ${jobId}`, 404);
     if (!env.GITHUB_TOKEN) return err('GITHUB_TOKEN not configured', 500);
     if (!env.GITHUB_REPO)  return err('GITHUB_REPO not configured', 500);
