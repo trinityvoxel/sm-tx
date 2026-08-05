@@ -38,6 +38,13 @@ const APPROVED_DOMAINS = [
 ];
 
 const LISTEN_SM_URL = 'https://www.visitsanmarcos.com/listen-san-marcos/live-this-week/';
+const SERIES_CUTOFFS = [
+  {
+    label: 'Summer in the Park 2026',
+    pattern: /summer\s+in\s+the\s+park/i,
+    lastDate: '2026-08-06',
+  },
+];
 
 // SECURITY: canary phrases — discard any event containing these
 const CANARY_PHRASES = [
@@ -66,7 +73,19 @@ function hasCanary(text) {
   return CANARY_PHRASES.some(p => lower.includes(p));
 }
 
+function isKnownStaleEvent(event) {
+  const text = `${event.name || ''} ${event.venue_name || ''} ${event.description || ''} ${event.url || ''}`;
+  return SERIES_CUTOFFS.some(series => (
+    event.date_start > series.lastDate && series.pattern.test(text)
+  ));
+}
+
 function sanitize(event) {
+  if (isKnownStaleEvent(event)) {
+    console.warn(`  [STALE] Discarding ${event.name} on ${event.date_start}`);
+    return null;
+  }
+
   for (const key of ['name', 'description', 'venue_name', 'venue_address', 'url']) {
     if (hasCanary(event[key])) {
       console.warn(`  [SECURITY] Canary phrase in "${key}" — discarding: ${event.name}`);
@@ -607,6 +626,10 @@ async function scrapeVisitSanMarcos(browser) {
             if (/^\d+\s+(am|pm)/i.test(line)) { i++; continue; }
 
             const name = line;
+            if (/summer\s+in\s+the\s+park/i.test(name)) {
+              i++;
+              continue;
+            }
             
             // Find venue from next lines
             let venueAddress = DEFAULT_ADDRESS;
@@ -1517,6 +1540,7 @@ async function scrapeSummerInThePark(browser) {
       const year = 2026;
       const isoDate = buildDate(year, monthNum, dayNum);
       if (!isWithinLookahead(isoDate)) continue;
+      if (isoDate > '2026-08-06') continue;
 
       const name = `${raw.artist} — Summer in the Park`.slice(0, 150);
       const desc = raw.raw;

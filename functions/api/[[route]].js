@@ -84,6 +84,21 @@ function todayCST() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date());
 }
 
+const EVENT_SERIES_CUTOFFS = [
+  {
+    label: 'Summer in the Park 2026',
+    pattern: /summer\s+in\s+the\s+park/i,
+    lastDate: '2026-08-06',
+  },
+];
+
+function isKnownStaleEvent(evt) {
+  const text = `${evt.name || ''} ${evt.venue_name || ''} ${evt.description || ''} ${evt.url || ''}`;
+  return EVENT_SERIES_CUTOFFS.some(series => (
+    evt.date_start > series.lastDate && series.pattern.test(text)
+  ));
+}
+
 /**
  * Returns a future date string N days from now, also CST-anchored.
  */
@@ -477,6 +492,10 @@ export async function onRequest(context) {
         // Skip past events (use CST date to avoid UTC drift)
         if (evt.date_start < todayCST()) {
           skipped.push({ reason: 'past event', event: evt.name });
+          continue;
+        }
+        if (isKnownStaleEvent(evt)) {
+          skipped.push({ reason: 'known stale event series', event: evt.name, date_start: evt.date_start });
           continue;
         }
 
