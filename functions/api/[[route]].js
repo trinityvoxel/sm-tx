@@ -231,6 +231,176 @@ async function notifySubmission(env, body, id, submittedAt) {
   }
 }
 
+function readableEventDate(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+  if (!match) return value || 'Date not provided';
+  const [, year, month, day] = match;
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 12));
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'America/Chicago',
+  }).format(date);
+}
+
+function approvalEventDateTime(event) {
+  const start = readableEventDate(event.date_start);
+  const dates = event.date_end && event.date_end !== event.date_start
+    ? `${start} through ${readableEventDate(event.date_end)}`
+    : start;
+  return event.time ? `${dates} at ${event.time}` : dates;
+}
+
+function approvalEmailContent(submission) {
+  const firstName = String(submission.submitter_name || '').trim().split(/\s+/)[0] || 'there';
+  const dateAndTime = approvalEventDateTime(submission);
+  const eventUrl = `https://sm-tx.com/events/${encodeURIComponent(submission.event_id)}`;
+  const subject = `Your event is live on SM-TX: ${submission.event_name}`;
+  const text = `Hi ${firstName},
+
+Thanks for sharing an event with the San Marcos community. We reviewed your submission and it is now live on SM-TX.
+
+${submission.event_name}
+${dateAndTime}
+${submission.venue_name}
+
+View your event: ${eventUrl}
+
+Thanks for helping San Marcos know what's happening.
+
+— SM-TX Events
+
+You received this operational email because you submitted an event to sm-tx.com.`;
+  const html = `<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Your event is live on SM-TX</title></head>
+  <body style="margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827">
+    <div style="display:none;max-height:0;overflow:hidden;color:transparent">${esc(submission.event_name)} has been approved and is now live on SM-TX.</div>
+    <div style="max-width:640px;margin:0 auto;padding:24px">
+      <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden">
+        <div style="background:#042f2e;padding:22px 28px;color:#ffffff">
+          <div style="font-size:20px;font-weight:800;letter-spacing:-.02em">SM-TX</div>
+          <div style="margin-top:3px;font-size:13px;color:#99f6e4">What's happening in San Marcos</div>
+        </div>
+        <div style="padding:30px 28px">
+          <div style="font-size:34px;line-height:1">🎉</div>
+          <h1 style="margin:12px 0 10px;font-size:25px;line-height:1.25;color:#111827">Your event is live!</h1>
+          <p style="margin:0 0 20px;font-size:16px;line-height:1.6;color:#4b5563">Hi ${esc(firstName)}, thanks for sharing an event with the San Marcos community. We reviewed your submission and it is now live on SM-TX.</p>
+          <div style="border:1px solid #d1fae5;background:#f0fdfa;border-radius:10px;padding:18px 20px">
+            <div style="font-size:18px;font-weight:700;color:#022c22">${esc(submission.event_name)}</div>
+            <div style="margin-top:9px;font-size:14px;line-height:1.55;color:#374151">📅 ${esc(dateAndTime)}</div>
+            <div style="margin-top:5px;font-size:14px;line-height:1.55;color:#374151">📍 ${esc(submission.venue_name)}</div>
+          </div>
+          <a href="${eventUrl}" style="display:inline-block;margin-top:22px;padding:12px 19px;border-radius:8px;background:#0f766e;color:#ffffff;text-decoration:none;font-weight:700">View your event</a>
+          <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#6b7280">Thanks for helping San Marcos know what's happening.</p>
+          <p style="margin:8px 0 0;font-size:14px;font-weight:700;color:#374151">— SM-TX Events</p>
+        </div>
+      </div>
+      <p style="margin:14px 0 0;text-align:center;font-size:12px;line-height:1.5;color:#9ca3af">You received this operational email because you submitted an event to sm-tx.com.</p>
+    </div>
+  </body>
+</html>`;
+  return { subject, text, html, eventUrl };
+}
+
+async function sendApprovalEmailMessage(env, submission) {
+  const { subject, text, html } = approvalEmailContent(submission);
+  const webhookUrl = env.SUBMISSION_EMAIL_WEBHOOK_URL
+    || 'https://sm-tx-email-notifier.trinityvoxel.workers.dev/notify';
+
+  if (env.SUBMISSION_EMAIL_WEBHOOK_SECRET) {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.SUBMISSION_EMAIL_WEBHOOK_SECRET}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        kind: 'approval',
+        to: submission.submitter_email,
+        subject,
+        text,
+        html,
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`Approval email webhook returned ${response.status}`);
+    }
+    return;
+  }
+
+  if (
+    env.EMAIL && typeof env.EMAIL.send === 'function'
+    && env.SUBMISSION_ALERT_TO && env.SUBMISSION_ALERT_FROM
+  ) {
+    await env.EMAIL.send({
+      to: submission.submitter_email,
+      bcc: env.SUBMISSION_ALERT_TO,
+      from: { email: env.SUBMISSION_ALERT_FROM, name: 'SM-TX Events' },
+      subject,
+      text,
+      html,
+    });
+    return;
+  }
+
+  throw new Error('Approval email delivery is not configured');
+}
+
+async function deliverApprovalEmail(env, eventId) {
+  const claim = await env.DB.prepare(`
+    UPDATE event_submissions
+    SET approval_email_status = 'sending', approval_email_error = NULL
+    WHERE event_id = ?
+      AND status = 'approved'
+      AND approval_email_status IN ('queued', 'failed', 'held_for_template_approval', 'not_sent_legacy')
+  `).bind(eventId).run();
+  const changes = claim.changes ?? claim.meta?.changes ?? 0;
+  if (!changes) return { sent: false, reason: 'not_queued' };
+
+  try {
+    const submission = await env.DB.prepare(`
+      SELECT
+        s.event_id, s.event_name, s.submitter_name, s.submitter_email,
+        e.date_start, e.date_end, e.time, e.venue_name
+      FROM event_submissions s
+      JOIN events e ON e.id = s.event_id
+      WHERE s.event_id = ? AND e.status = 'approved'
+    `).bind(eventId).first();
+    if (!submission) throw new Error('Approved submission record not found');
+
+    await sendApprovalEmailMessage(env, submission);
+    const sentAt = new Date().toISOString();
+    await env.DB.prepare(`
+      UPDATE event_submissions
+      SET approval_email_status = 'sent', approval_email_sent_at = ?, approval_email_error = NULL
+      WHERE event_id = ?
+    `).bind(sentAt, eventId).run();
+    return { sent: true, sentAt };
+  } catch (error) {
+    const message = String(error?.message || error).slice(0, 500);
+    await env.DB.prepare(`
+      UPDATE event_submissions
+      SET approval_email_status = 'failed', approval_email_error = ?
+      WHERE event_id = ?
+    `).bind(message, eventId).run();
+    throw error;
+  }
+}
+
+async function scheduleApprovalEmail(context, env, eventId) {
+  if (env.APPROVAL_EMAIL_ENABLED !== 'true') return;
+  const task = deliverApprovalEmail(env, eventId).catch(error => {
+    console.error('Approval email delivery failed:', error);
+  });
+  if (typeof context.waitUntil === 'function') {
+    context.waitUntil(task);
+  } else {
+    await task;
+  }
+}
+
 /**
  * Returns today's date string (YYYY-MM-DD) in America/Chicago (CST/CDT).
  * Avoids the UTC drift bug where dates after 6pm CST would return tomorrow's date.
@@ -266,12 +436,17 @@ function publicEventColumns(alias = '') {
 }
 
 function reviewSubmissionStatement(env, eventId, status, reviewedAt) {
-  const emailStatus = status === 'approved' ? 'held_for_template_approval' : 'not_applicable';
+  const pendingEmailStatus = env.APPROVAL_EMAIL_ENABLED === 'true'
+    ? 'queued'
+    : 'waiting_for_email_provider';
+  const emailStatus = status === 'approved'
+    ? `CASE WHEN approval_email_status IN ('sent', 'sending') THEN approval_email_status ELSE '${pendingEmailStatus}' END`
+    : "'not_applicable'";
   return env.DB.prepare(`
     UPDATE event_submissions
-    SET status = ?, reviewed_at = ?, approval_email_status = ?
+    SET status = ?, reviewed_at = ?, approval_email_status = ${emailStatus}
     WHERE event_id = ?
-  `).bind(status, reviewedAt, emailStatus, eventId);
+  `).bind(status, reviewedAt, eventId);
 }
 
 /**
@@ -645,6 +820,9 @@ export async function onRequest(context) {
       await env.DB.batch(statements);
       const updated = await env.DB.prepare('SELECT * FROM events WHERE id = ?').bind(id).first();
       if (!updated) return err('Event not found', 404);
+      if (body.status === 'approved') {
+        await scheduleApprovalEmail(context, env, id);
+      }
       return json(updated);
     } catch (e) {
       return err(e.message, 500);
@@ -820,6 +998,7 @@ export async function onRequest(context) {
           env.DB.prepare("UPDATE events SET status = 'approved', updated_at = ? WHERE id = ?").bind(now, evtId),
           reviewSubmissionStatement(env, evtId, 'approved', now),
         ]);
+        await scheduleApprovalEmail(context, env, evtId);
 
         return htmlPage(
           'Event Approved',

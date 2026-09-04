@@ -511,7 +511,7 @@ function Dashboard({ apiKey, onLogout }) {
         status: 'approved',
         event_status: 'approved',
         reviewed_at: new Date().toISOString(),
-        approval_email_status: 'held_for_template_approval',
+        approval_email_status: 'queued',
       } : submission));
     } catch (e) {
       setError(e.message);

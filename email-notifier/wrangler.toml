@@ -6,6 +6,9 @@ workers_dev = true
 [[send_email]]
 name = "EMAIL"
 
+# Approval emails require sm-tx.com to be onboarded to Cloudflare Email Sending.
+# Email Routing alone can only send to pre-verified destination addresses.
+
 # Secrets (set via wrangler secret put from this directory):
 # WEBHOOK_SECRET — must match the Pages SUBMISSION_EMAIL_WEBHOOK_SECRET
 # SUBMISSION_ALERT_TO — verified Cloudflare Email Routing destination

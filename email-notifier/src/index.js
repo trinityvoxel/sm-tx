@@ -54,10 +54,13 @@ export default {
       return json({ error: 'Invalid JSON' }, 400);
     }
 
+    const isApproval = body.kind === 'approval';
     if (
       typeof body.subject !== 'string' || !body.subject.trim() || body.subject.length > 200
       || typeof body.text !== 'string' || body.text.length > 100000
       || typeof body.html !== 'string' || body.html.length > 100000
+      || (isApproval && !validEmail(body.to))
+      || (body.kind && !isApproval)
       || (body.replyTo && !validEmail(body.replyTo))
     ) {
       return json({ error: 'Invalid email payload' }, 400);
@@ -65,7 +68,8 @@ export default {
 
     try {
       const result = await env.EMAIL.send({
-        to: env.SUBMISSION_ALERT_TO,
+        to: isApproval ? body.to : env.SUBMISSION_ALERT_TO,
+        ...(isApproval ? { bcc: env.SUBMISSION_ALERT_TO } : {}),
         from: { email: env.SUBMISSION_ALERT_FROM, name: 'SM-TX Events' },
         subject: body.subject.trim(),
         text: body.text,
