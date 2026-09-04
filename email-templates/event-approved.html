@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Your event is live on SM-TX</title>
+  </head>
+  <body style="margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827">
+    <div style="display:none;max-height:0;overflow:hidden;color:transparent">
+      {{event_name}} has been approved and is now live on SM-TX.
+    </div>
+    <div style="max-width:640px;margin:0 auto;padding:24px">
+      <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden">
+        <div style="background:#042f2e;padding:22px 28px;color:#ffffff">
+          <div style="font-size:20px;font-weight:800;letter-spacing:-.02em">SM-TX</div>
+          <div style="margin-top:3px;font-size:13px;color:#99f6e4">What's happening in San Marcos</div>
+        </div>
+        <div style="padding:30px 28px">
+          <div style="font-size:34px;line-height:1">🎉</div>
+          <h1 style="margin:12px 0 10px;font-size:25px;line-height:1.25;color:#111827">Your event is live!</h1>
+          <p style="margin:0 0 20px;font-size:16px;line-height:1.6;color:#4b5563">
+            Hi {{submitter_first_name}}, thanks for sharing an event with the San Marcos community. We reviewed your submission and it is now live on SM-TX.
+          </p>
+          <div style="border:1px solid #d1fae5;background:#f0fdfa;border-radius:10px;padding:18px 20px">
+            <div style="font-size:18px;font-weight:700;color:#022c22">{{event_name}}</div>
+            <div style="margin-top:9px;font-size:14px;line-height:1.55;color:#374151">📅 {{event_date_and_time}}</div>
+            <div style="margin-top:5px;font-size:14px;line-height:1.55;color:#374151">📍 {{venue_name}}</div>
+          </div>
+          <a href="{{event_url}}" style="display:inline-block;margin-top:22px;padding:12px 19px;border-radius:8px;background:#0f766e;color:#ffffff;text-decoration:none;font-weight:700">View your event</a>
+          <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#6b7280">
+            Thanks for helping San Marcos know what's happening.
+          </p>
+          <p style="margin:8px 0 0;font-size:14px;font-weight:700;color:#374151">— SM-TX Events</p>
+        </div>
+      </div>
+      <p style="margin:14px 0 0;text-align:center;font-size:12px;line-height:1.5;color:#9ca3af">
+        You received this operational email because you submitted an event to sm-tx.com.
+      </p>
+    </div>
+  </body>
+</html>

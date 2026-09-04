@@ -26,6 +26,28 @@ CREATE TABLE IF NOT EXISTS events (
   updated_at      TEXT NOT NULL
 );
 
+-- Private audit trail for community submissions. Submitter PII belongs here,
+-- never in public event API responses.
+CREATE TABLE IF NOT EXISTS event_submissions (
+  id                         TEXT PRIMARY KEY,
+  event_id                   TEXT NOT NULL UNIQUE,
+  event_name                 TEXT NOT NULL,
+  submitter_name             TEXT NOT NULL,
+  submitter_email            TEXT NOT NULL,
+  submitter_email_normalized TEXT NOT NULL,
+  status                     TEXT NOT NULL DEFAULT 'pending',
+  submitted_at               TEXT NOT NULL,
+  reviewed_at                TEXT,
+  approval_email_status      TEXT NOT NULL DEFAULT 'pending_review',
+  approval_email_sent_at     TEXT,
+  approval_email_error       TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_event_submissions_email
+  ON event_submissions(submitter_email_normalized);
+CREATE INDEX IF NOT EXISTS idx_event_submissions_submitted
+  ON event_submissions(submitted_at DESC);
+
 -- Event sources configuration
 CREATE TABLE IF NOT EXISTS event_sources (
   id             TEXT PRIMARY KEY,

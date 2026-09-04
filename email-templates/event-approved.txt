@@ -1,0 +1,17 @@
+Subject: Your event is live on SM-TX: {{event_name}}
+
+Hi {{submitter_first_name}},
+
+Thanks for sharing an event with the San Marcos community. We reviewed your submission and it is now live on SM-TX.
+
+{{event_name}}
+{{event_date_and_time}}
+{{venue_name}}
+
+View your event: {{event_url}}
+
+Thanks for helping San Marcos know what's happening.
+
+— SM-TX Events
+
+You received this operational email because you submitted an event to sm-tx.com.

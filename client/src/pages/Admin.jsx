@@ -328,6 +328,94 @@ function PendingEventCard({ event, onApprove, onReject }) {
   );
 }
 
+function statusLabel(value) {
+  return String(value || 'unknown').replaceAll('_', ' ');
+}
+
+function SubmissionHistory({ submissions }) {
+  const [search, setSearch] = useState('');
+  const needle = search.trim().toLowerCase();
+  const filtered = submissions.filter(submission => !needle || [
+    submission.event_name,
+    submission.submitter_name,
+    submission.submitter_email,
+    submission.status,
+  ].some(value => String(value || '').toLowerCase().includes(needle)));
+
+  return (
+    <>
+      <input
+        type="search"
+        value={search}
+        onChange={event => setSearch(event.target.value)}
+        placeholder="Search by person, email, event, or status…"
+        aria-label="Search submission history"
+        style={{
+          width: '100%', boxSizing: 'border-box', marginBottom: '0.85rem',
+          padding: '0.55rem 0.7rem', border: '1px solid #d1d5db', borderRadius: 8,
+          fontSize: '0.88rem', color: '#1f2937', background: '#fff',
+        }}
+      />
+      {filtered.length === 0 ? (
+        <p style={{ fontSize: '0.9rem', color: '#6b7280' }}>No matching submissions.</p>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse', fontSize: '0.84rem' }}>
+            <thead>
+              <tr style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb', color: '#4b5563' }}>
+                <th style={{ padding: '0.55rem' }}>Event</th>
+                <th style={{ padding: '0.55rem' }}>Submitted by</th>
+                <th style={{ padding: '0.55rem' }}>Submitted</th>
+                <th style={{ padding: '0.55rem' }}>Status</th>
+                <th style={{ padding: '0.55rem' }}>Approval email</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(submission => (
+                <tr key={submission.id} style={{ borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
+                  <td style={{ padding: '0.65rem 0.55rem', maxWidth: 260 }}>
+                    {submission.event_status === 'approved' ? (
+                      <a href={`/events/${submission.event_id}`} target="_blank" rel="noreferrer" style={{ color: '#0e7490', fontWeight: 600 }}>
+                        {submission.event_name}
+                      </a>
+                    ) : <span style={{ fontWeight: 600 }}>{submission.event_name}</span>}
+                    {submission.date_start && (
+                      <div style={{ marginTop: '0.2rem', color: '#6b7280' }}>
+                        {submission.date_start}{submission.time ? ` @ ${submission.time}` : ''}
+                      </div>
+                    )}
+                  </td>
+                  <td style={{ padding: '0.65rem 0.55rem' }}>
+                    <div>{submission.submitter_name}</div>
+                    <button
+                      type="button"
+                      onClick={() => setSearch(submission.submitter_email)}
+                      title="Show every submission from this email"
+                      style={{
+                        display: 'block', margin: '0.2rem 0 0', padding: 0, border: 0,
+                        color: '#0e7490', background: 'none', cursor: 'pointer', fontSize: '0.8rem',
+                      }}
+                    >
+                      {submission.submitter_email}
+                    </button>
+                  </td>
+                  <td style={{ padding: '0.65rem 0.55rem', color: '#4b5563', whiteSpace: 'nowrap' }}>
+                    {displayDateTime(submission.submitted_at)}
+                  </td>
+                  <td style={{ padding: '0.65rem 0.55rem', textTransform: 'capitalize' }}>{statusLabel(submission.status)}</td>
+                  <td style={{ padding: '0.65rem 0.55rem', color: '#4b5563', textTransform: 'capitalize' }}>
+                    {statusLabel(submission.approval_email_status)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 function Dashboard({ apiKey, onLogout }) {
@@ -336,6 +424,7 @@ function Dashboard({ apiKey, onLogout }) {
   const [jobs, setJobs] = useState([]);
   const [jobRuns, setJobRuns] = useState({});
   const [pending, setPending] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -345,27 +434,30 @@ function Dashboard({ apiKey, onLogout }) {
     setLoading(true);
     setError(null);
     try {
-      const [settingsRes, sourcesRes, jobsRes, pendingRes] = await Promise.all([
+      const [settingsRes, sourcesRes, jobsRes, pendingRes, submissionsRes] = await Promise.all([
         fetch('/api/admin/settings', { headers }),
         fetch('/api/admin/sources', { headers }),
         fetch('/api/admin/jobs', { headers }),
         fetch('/api/events/pending', { headers }),
+        fetch('/api/admin/submissions?limit=200', { headers }),
       ]);
       if (!settingsRes.ok) throw new Error(`Settings: ${settingsRes.status}`);
       if (!sourcesRes.ok) throw new Error(`Sources: ${sourcesRes.status}`);
       if (!jobsRes.ok) throw new Error(`Jobs: ${jobsRes.status}`);
 
-      const [settingsJson, sourcesJson, jobsJson, pendingJson] = await Promise.all([
+      const [settingsJson, sourcesJson, jobsJson, pendingJson, submissionsJson] = await Promise.all([
         settingsRes.json(),
         sourcesRes.json(),
         jobsRes.json(),
         pendingRes.ok ? pendingRes.json() : [],
+        submissionsRes.ok ? submissionsRes.json() : [],
       ]);
 
       setSettings(settingsJson);
       setSources(sourcesJson);
       setJobs(jobsJson || []);
       setPending(pendingJson || []);
+      setSubmissions(submissionsJson || []);
 
       // Fetch recent runs for each job
       const runsEntries = await Promise.all(
@@ -414,6 +506,13 @@ function Dashboard({ apiKey, onLogout }) {
       });
       if (!res.ok) throw new Error(`Approve failed: ${res.status}`);
       setPending(prev => prev.filter(e => e.id !== id));
+      setSubmissions(prev => prev.map(submission => submission.event_id === id ? {
+        ...submission,
+        status: 'approved',
+        event_status: 'approved',
+        reviewed_at: new Date().toISOString(),
+        approval_email_status: 'held_for_template_approval',
+      } : submission));
     } catch (e) {
       setError(e.message);
     }
@@ -424,6 +523,13 @@ function Dashboard({ apiKey, onLogout }) {
       const res = await fetch(`/api/events/${id}`, { method: 'DELETE', headers });
       if (!res.ok) throw new Error(`Reject failed: ${res.status}`);
       setPending(prev => prev.filter(e => e.id !== id));
+      setSubmissions(prev => prev.map(submission => submission.event_id === id ? {
+        ...submission,
+        status: 'rejected',
+        event_status: null,
+        reviewed_at: new Date().toISOString(),
+        approval_email_status: 'not_applicable',
+      } : submission));
     } catch (e) {
       setError(e.message);
     }
@@ -489,6 +595,14 @@ function Dashboard({ apiKey, onLogout }) {
               />
             ))}
           </div>
+        )}
+      </Section>
+
+      <Section title={`Submission History ${submissions.length > 0 ? `(${submissions.length})` : ''}`}>
+        {submissions.length === 0 ? (
+          <p style={{ fontSize: '0.9rem', color: '#6b7280' }}>No community submissions recorded yet.</p>
+        ) : (
+          <SubmissionHistory submissions={submissions} />
         )}
       </Section>
 

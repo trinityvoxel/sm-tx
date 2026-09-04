@@ -233,7 +233,7 @@ export default function Submit() {
           }}>
             <h3 style={{ fontWeight: 700, marginBottom: '1rem', color: '#1a1a2e', fontSize: '1rem' }}>Your Info</h3>
             <p style={{ fontSize: '0.82rem', color: '#6b7280', marginBottom: '0.75rem' }}>
-              We'll use this to follow up if we have questions. Not displayed publicly.
+              Used only for questions and status updates about this submission. Never displayed publicly or added to a marketing list.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <Field label="Your Name" required>

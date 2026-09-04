@@ -254,6 +254,26 @@ function isKnownStaleEvent(evt) {
   ));
 }
 
+const PUBLIC_EVENT_FIELDS = [
+  'id', 'source', 'status', 'name', 'date_start', 'date_end', 'time',
+  'venue_name', 'venue_address', 'category', 'description', 'url', 'cost',
+  'kid_friendly', 'pet_friendly', 'age_21_plus', 'image_url', 'image_override',
+  'created_at', 'updated_at',
+];
+
+function publicEventColumns(alias = '') {
+  return PUBLIC_EVENT_FIELDS.map(field => `${alias}${field}`).join(', ');
+}
+
+function reviewSubmissionStatement(env, eventId, status, reviewedAt) {
+  const emailStatus = status === 'approved' ? 'held_for_template_approval' : 'not_applicable';
+  return env.DB.prepare(`
+    UPDATE event_submissions
+    SET status = ?, reviewed_at = ?, approval_email_status = ?
+    WHERE event_id = ?
+  `).bind(status, reviewedAt, emailStatus, eventId);
+}
+
 /**
  * Returns a future date string N days from now, also CST-anchored.
  */
@@ -342,7 +362,7 @@ export async function onRequest(context) {
   // ── GET /api/events ───────────────────────────────────────────────────────
   if (method === 'GET' && rest === '/events') {
     try {
-      let query = 'SELECT * FROM events WHERE status = ?';
+      let query = `SELECT ${publicEventColumns()} FROM events WHERE status = ?`;
       const binds = ['approved'];
 
       if (params.get('upcoming') === 'true') {
@@ -383,7 +403,7 @@ export async function onRequest(context) {
       const today = todayCST();
       const future = futureDateCST(90);
       const { results } = await env.DB.prepare(
-        `SELECT * FROM events WHERE status = ? AND (
+        `SELECT ${publicEventColumns()} FROM events WHERE status = ? AND (
           (date_start >= ? AND date_start <= ?) OR
           (date_end IS NOT NULL AND date_end >= ? AND date_start < ?)
         ) ORDER BY date_start ASC, time ASC NULLS LAST`
@@ -399,8 +419,41 @@ export async function onRequest(context) {
     if (!isAuthed(request, env)) return err('Unauthorized', 401);
     try {
       const { results } = await env.DB.prepare(
-        'SELECT * FROM events WHERE status = ? ORDER BY created_at DESC'
+        `SELECT
+          e.*,
+          COALESCE(s.submitter_name, e.submitter_name) AS submitter_name,
+          COALESCE(s.submitter_email, e.submitter_email) AS submitter_email,
+          s.id AS submission_id,
+          s.status AS submission_status,
+          s.approval_email_status
+        FROM events e
+        LEFT JOIN event_submissions s ON s.event_id = e.id
+        WHERE e.status = ?
+        ORDER BY e.created_at DESC`
       ).bind('pending').all();
+      return json(results);
+    } catch (e) {
+      return err(e.message, 500);
+    }
+  }
+
+  // ── GET /api/admin/submissions ────────────────────────────────────────────
+  if (method === 'GET' && rest === '/admin/submissions') {
+    if (!isAuthed(request, env)) return err('Unauthorized', 401);
+    try {
+      const limit = Math.min(Math.max(Number(params.get('limit')) || 100, 1), 500);
+      const { results } = await env.DB.prepare(`
+        SELECT
+          s.*,
+          e.date_start,
+          e.time,
+          e.venue_name,
+          e.status AS event_status
+        FROM event_submissions s
+        LEFT JOIN events e ON e.id = s.event_id
+        ORDER BY s.submitted_at DESC
+        LIMIT ?
+      `).bind(limit).all();
       return json(results);
     } catch (e) {
       return err(e.message, 500);
@@ -502,23 +555,38 @@ export async function onRequest(context) {
         if (!body[field]) return err(`Missing required field: ${field}`);
       }
       const id = crypto.randomUUID();
+      const submissionId = crypto.randomUUID();
       const now = new Date().toISOString();
-      await env.DB.prepare(`
+      const submitterName = String(body.submitter_name).trim();
+      const submitterEmail = String(body.submitter_email).trim();
+      if (!submitterName) return err('Submitter name is required');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(submitterEmail)) return err('Invalid submitter email');
+
+      const insertEvent = env.DB.prepare(`
         INSERT INTO events (
           id, source, status, name, date_start, date_end, time,
           venue_name, venue_address, category, description, url, cost,
           kid_friendly, pet_friendly, age_21_plus,
-          submitter_name, submitter_email, created_at, updated_at
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          created_at, updated_at
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `).bind(
         id, 'community', 'pending',
         body.name, body.date_start, body.date_end || null, body.time || null,
         body.venue_name, body.venue_address, body.category,
         body.description || null, body.url || null, body.cost || 'free',
         body.kid_friendly ? 1 : 0, body.pet_friendly ? 1 : 0, body.age_21_plus ? 1 : 0,
-        body.submitter_name, body.submitter_email,
         now, now
-      ).run();
+      );
+      const insertSubmission = env.DB.prepare(`
+        INSERT INTO event_submissions (
+          id, event_id, event_name, submitter_name, submitter_email,
+          submitter_email_normalized, status, submitted_at, approval_email_status
+        ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, 'pending_review')
+      `).bind(
+        submissionId, id, body.name, submitterName, submitterEmail,
+        submitterEmail.toLowerCase(), now
+      );
+      await env.DB.batch([insertEvent, insertSubmission]);
       // Keep notification requests alive after returning the fast 201 response.
       // The previous untracked fetch could be cancelled when the Function ended.
       const notificationTask = notifySubmission(env, body, id, now);
@@ -538,7 +606,9 @@ export async function onRequest(context) {
   if (method === 'GET' && idMatch) {
     const id = idMatch[1];
     try {
-      const event = await env.DB.prepare('SELECT * FROM events WHERE id = ?').bind(id).first();
+      const event = await env.DB.prepare(
+        `SELECT ${publicEventColumns()} FROM events WHERE id = ? AND status = 'approved'`
+      ).bind(id).first();
       if (!event) return err('Event not found', 404);
       return json(event);
     } catch (e) {
@@ -566,7 +636,13 @@ export async function onRequest(context) {
       sets.push('updated_at = ?');
       vals.push(new Date().toISOString());
       vals.push(id);
-      await env.DB.prepare(`UPDATE events SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
+      const statements = [
+        env.DB.prepare(`UPDATE events SET ${sets.join(', ')} WHERE id = ?`).bind(...vals),
+      ];
+      if (body.status === 'approved' || body.status === 'rejected') {
+        statements.push(reviewSubmissionStatement(env, id, body.status, vals[vals.length - 2]));
+      }
+      await env.DB.batch(statements);
       const updated = await env.DB.prepare('SELECT * FROM events WHERE id = ?').bind(id).first();
       if (!updated) return err('Event not found', 404);
       return json(updated);
@@ -580,7 +656,11 @@ export async function onRequest(context) {
     if (!isAuthed(request, env)) return err('Unauthorized', 401);
     const id = idMatch[1];
     try {
-      await env.DB.prepare('DELETE FROM events WHERE id = ?').bind(id).run();
+      const now = new Date().toISOString();
+      await env.DB.batch([
+        reviewSubmissionStatement(env, id, 'rejected', now),
+        env.DB.prepare('DELETE FROM events WHERE id = ?').bind(id),
+      ]);
       return json({ message: 'Deleted.' });
     } catch (e) {
       return err(e.message, 500);
@@ -735,8 +815,11 @@ export async function onRequest(context) {
         return htmlPage('Not Found', '🤷', '<p>This event no longer exists — it may have already been reviewed.</p>', '#6b7280');
       }
       if (action === 'approve') {
-        await env.DB.prepare("UPDATE events SET status = 'approved', updated_at = ? WHERE id = ?")
-          .bind(new Date().toISOString(), evtId).run();
+        const now = new Date().toISOString();
+        await env.DB.batch([
+          env.DB.prepare("UPDATE events SET status = 'approved', updated_at = ? WHERE id = ?").bind(now, evtId),
+          reviewSubmissionStatement(env, evtId, 'approved', now),
+        ]);
 
         return htmlPage(
           'Event Approved',
@@ -745,7 +828,11 @@ export async function onRequest(context) {
           '#10b981'
         );
       } else {
-        await env.DB.prepare('DELETE FROM events WHERE id = ?').bind(evtId).run();
+        const now = new Date().toISOString();
+        await env.DB.batch([
+          reviewSubmissionStatement(env, evtId, 'rejected', now),
+          env.DB.prepare('DELETE FROM events WHERE id = ?').bind(evtId),
+        ]);
         return htmlPage(
           'Event Rejected',
           '🗑️',
