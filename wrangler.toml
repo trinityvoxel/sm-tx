@@ -19,6 +19,9 @@ database_id = "3c83f9e8-f37c-4d76-9548-a085f7892ade"
 # SUBMISSION_EMAIL_WEBHOOK_SECRET — shared secret for sm-tx-email-notifier
 # SUBMISSION_EMAIL_WEBHOOK_URL — optional override for the email notifier URL
 # APPROVAL_EMAIL_ENABLED — set to "true" only after arbitrary-recipient sending is configured
+# BREVO_API_KEY — dedicated SM-TX Brevo transactional API key
+# APPROVAL_EMAIL_BCC — address BCC'd on every approval email
+# APPROVAL_EMAIL_FROM — optional sender override (defaults to events@sm-tx.com)
 # CLOUDFLARE_EMAIL_API_TOKEN — API token scoped to Email Sending
 # CLOUDFLARE_ACCOUNT_ID — Cloudflare account containing sm-tx.com
 # SUBMISSION_ALERT_TO — verified destination address for new submissions

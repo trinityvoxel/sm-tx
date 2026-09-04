@@ -309,6 +309,42 @@ async function sendApprovalEmailMessage(env, submission) {
   const webhookUrl = env.SUBMISSION_EMAIL_WEBHOOK_URL
     || 'https://sm-tx-email-notifier.trinityvoxel.workers.dev/notify';
 
+  // Approval messages go through the dedicated SM-TX Brevo account. Keep the
+  // existing Cloudflare notifier below as a fallback for environments that
+  // have not migrated yet.
+  if (env.BREVO_API_KEY) {
+    const bcc = env.APPROVAL_EMAIL_BCC || env.SUBMISSION_ALERT_TO;
+    if (!bcc) throw new Error('Approval email BCC is not configured');
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': env.BREVO_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: {
+          name: 'SM-TX Events',
+          email: env.APPROVAL_EMAIL_FROM || 'events@sm-tx.com',
+        },
+        to: [{
+          email: submission.submitter_email,
+          name: submission.submitter_name || undefined,
+        }],
+        bcc: [{ email: bcc }],
+        subject,
+        htmlContent: html,
+        textContent: text,
+      }),
+    });
+    if (!response.ok) {
+      const detail = (await response.text()).slice(0, 300);
+      throw new Error(`Brevo approval email returned ${response.status}${detail ? `: ${detail}` : ''}`);
+    }
+    return;
+  }
+
   if (env.SUBMISSION_EMAIL_WEBHOOK_SECRET) {
     const response = await fetch(webhookUrl, {
       method: 'POST',
