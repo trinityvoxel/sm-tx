@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { CATEGORY_LABELS } from '../constants.js';
 
 const SESSION_KEY = 'sm_tx_admin_key';
 
@@ -201,6 +202,132 @@ function RunNowButton({ jobId, apiKey, onDone, lastRunAt }) {
   );
 }
 
+// ─── Pending submission card ────────────────────────────────────────────────
+
+function displayDateTime(value) {
+  if (!value) return 'Not provided';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+function PendingEventCard({ event, onApprove, onReject }) {
+  const [expanded, setExpanded] = useState(false);
+  const detailsId = `pending-event-${event.id}`;
+  const eventUrl = /^https?:\/\//i.test(event.url || '') ? event.url : null;
+  const flags = [
+    ['Kid friendly', event.kid_friendly],
+    ['Pet friendly', event.pet_friendly],
+    ['21+ only', event.age_21_plus],
+  ];
+
+  const detailRows = [
+    ['Start date', event.date_start],
+    ['End date', event.date_end || 'Not provided'],
+    ['Time', event.time || 'Not provided'],
+    ['Category', CATEGORY_LABELS[event.category] || event.category || 'Not provided'],
+    ['Cost / tickets', event.cost || 'Free'],
+    ['Venue', event.venue_name],
+    ['Venue address', event.venue_address],
+  ];
+
+  return (
+    <article style={{
+      padding: '0.9rem', borderRadius: 8, background: '#f9fafb',
+      border: '1px solid #e5e7eb',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+        gap: '1rem', flexWrap: 'wrap',
+      }}>
+        <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{event.name}</div>
+          <div style={{ fontSize: '0.85rem', color: '#4b5563', marginTop: '0.2rem' }}>
+            {event.date_start}{event.time ? ` @ ${event.time}` : ''} · {event.venue_name}
+          </div>
+          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.15rem' }}>
+            Submitted by {event.submitter_name} ({event.submitter_email})
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            aria-expanded={expanded}
+            aria-controls={detailsId}
+            onClick={() => setExpanded(value => !value)}
+            style={{ padding: '0.35rem 0.75rem', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', color: '#0f766e', fontSize: '0.85rem', cursor: 'pointer' }}
+          >
+            {expanded ? 'Hide details' : 'View details'}
+          </button>
+          <button
+            type="button"
+            onClick={() => onApprove(event.id)}
+            style={{ padding: '0.35rem 0.75rem', borderRadius: 8, border: 'none', background: '#16a34a', color: '#fff', fontSize: '0.85rem', cursor: 'pointer' }}
+          >
+            Approve
+          </button>
+          <button
+            type="button"
+            onClick={() => onReject(event.id)}
+            style={{ padding: '0.35rem 0.75rem', borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', color: '#374151', fontSize: '0.85rem', cursor: 'pointer' }}
+          >
+            Reject
+          </button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div id={detailsId} style={{ marginTop: '0.9rem', paddingTop: '0.9rem', borderTop: '1px solid #e5e7eb' }}>
+          <dl style={{
+            display: 'grid', gridTemplateColumns: 'minmax(110px, 150px) minmax(0, 1fr)',
+            columnGap: '1rem', rowGap: '0.65rem', margin: 0, fontSize: '0.86rem',
+          }}>
+            {detailRows.map(([label, value]) => (
+              <React.Fragment key={label}>
+                <dt style={{ color: '#6b7280', fontWeight: 600 }}>{label}</dt>
+                <dd style={{ margin: 0, color: '#1f2937', overflowWrap: 'anywhere' }}>{value || 'Not provided'}</dd>
+              </React.Fragment>
+            ))}
+            <dt style={{ color: '#6b7280', fontWeight: 600 }}>Event URL</dt>
+            <dd style={{ margin: 0, color: '#1f2937', overflowWrap: 'anywhere' }}>
+              {eventUrl ? <a href={eventUrl} target="_blank" rel="noreferrer" style={{ color: '#0e7490' }}>{eventUrl}</a> : 'Not provided'}
+            </dd>
+            <dt style={{ color: '#6b7280', fontWeight: 600 }}>Audience</dt>
+            <dd style={{ margin: 0, display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              {flags.map(([label, enabled]) => (
+                <span key={label} style={{
+                  padding: '0.15rem 0.45rem', borderRadius: 999,
+                  background: enabled ? '#dcfce7' : '#f3f4f6',
+                  color: enabled ? '#166534' : '#6b7280', fontSize: '0.78rem',
+                }}>
+                  {enabled ? '✓' : '—'} {label}
+                </span>
+              ))}
+            </dd>
+            <dt style={{ color: '#6b7280', fontWeight: 600 }}>Submitter</dt>
+            <dd style={{ margin: 0, color: '#1f2937', overflowWrap: 'anywhere' }}>
+              {event.submitter_name} · <a href={`mailto:${event.submitter_email}`} style={{ color: '#0e7490' }}>{event.submitter_email}</a>
+            </dd>
+            <dt style={{ color: '#6b7280', fontWeight: 600 }}>Submitted</dt>
+            <dd style={{ margin: 0, color: '#1f2937' }}>{displayDateTime(event.created_at)}</dd>
+            <dt style={{ color: '#6b7280', fontWeight: 600 }}>Submission ID</dt>
+            <dd style={{ margin: 0, color: '#4b5563', overflowWrap: 'anywhere', fontFamily: 'monospace', fontSize: '0.8rem' }}>{event.id}</dd>
+          </dl>
+          <div style={{ marginTop: '0.9rem' }}>
+            <div style={{ color: '#6b7280', fontWeight: 600, fontSize: '0.86rem', marginBottom: '0.35rem' }}>Description</div>
+            <div style={{
+              color: '#1f2937', fontSize: '0.88rem', lineHeight: 1.55,
+              whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
+              padding: '0.75rem', borderRadius: 7, background: '#fff', border: '1px solid #e5e7eb',
+            }}>
+              {event.description || 'Not provided'}
+            </div>
+          </div>
+        </div>
+      )}
+    </article>
+  );
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 function Dashboard({ apiKey, onLogout }) {
@@ -280,11 +407,12 @@ function Dashboard({ apiKey, onLogout }) {
 
   async function approveEvent(id) {
     try {
-      await fetch(`/api/events/${id}`, {
+      const res = await fetch(`/api/events/${id}`, {
         method: 'PATCH',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'approved' }),
       });
+      if (!res.ok) throw new Error(`Approve failed: ${res.status}`);
       setPending(prev => prev.filter(e => e.id !== id));
     } catch (e) {
       setError(e.message);
@@ -293,7 +421,8 @@ function Dashboard({ apiKey, onLogout }) {
 
   async function rejectEvent(id) {
     try {
-      await fetch(`/api/events/${id}`, { method: 'DELETE', headers });
+      const res = await fetch(`/api/events/${id}`, { method: 'DELETE', headers });
+      if (!res.ok) throw new Error(`Reject failed: ${res.status}`);
       setPending(prev => prev.filter(e => e.id !== id));
     } catch (e) {
       setError(e.message);
@@ -352,35 +481,12 @@ function Dashboard({ apiKey, onLogout }) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {pending.map(evt => (
-              <div key={evt.id} style={{
-                display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-                gap: '1rem', padding: '0.75rem', borderRadius: 8, background: '#f9fafb',
-                border: '1px solid #e5e7eb',
-              }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{evt.name}</div>
-                  <div style={{ fontSize: '0.85rem', color: '#4b5563', marginTop: '0.2rem' }}>
-                    {evt.date_start}{evt.time ? ` @ ${evt.time}` : ''} · {evt.venue_name}
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '0.15rem' }}>
-                    Submitted by {evt.submitter_name} ({evt.submitter_email})
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
-                  <button
-                    onClick={() => approveEvent(evt.id)}
-                    style={{ padding: '0.35rem 0.75rem', borderRadius: 8, border: 'none', background: '#16a34a', color: '#fff', fontSize: '0.85rem', cursor: 'pointer' }}
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => rejectEvent(evt.id)}
-                    style={{ padding: '0.35rem 0.75rem', borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', color: '#374151', fontSize: '0.85rem', cursor: 'pointer' }}
-                  >
-                    Reject
-                  </button>
-                </div>
-              </div>
+              <PendingEventCard
+                key={evt.id}
+                event={evt}
+                onApprove={approveEvent}
+                onReject={rejectEvent}
+              />
             ))}
           </div>
         )}

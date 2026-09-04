@@ -1,0 +1,12 @@
+name = "sm-tx-email-notifier"
+main = "src/index.js"
+compatibility_date = "2026-09-04"
+workers_dev = true
+
+[[send_email]]
+name = "EMAIL"
+
+# Secrets (set via wrangler secret put from this directory):
+# WEBHOOK_SECRET — must match the Pages SUBMISSION_EMAIL_WEBHOOK_SECRET
+# SUBMISSION_ALERT_TO — verified Cloudflare Email Routing destination
+# SUBMISSION_ALERT_FROM — sender on sm-tx.com (for example events@sm-tx.com)

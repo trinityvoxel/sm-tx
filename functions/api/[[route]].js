@@ -76,6 +76,161 @@ function esc(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+function yesNo(value) {
+  return value ? 'Yes' : 'No';
+}
+
+function submissionDetails(body, id, submittedAt) {
+  const dates = body.date_end && body.date_end !== body.date_start
+    ? `${body.date_start} through ${body.date_end}`
+    : body.date_start;
+
+  return [
+    ['Event', body.name],
+    ['Date', dates],
+    ['Time', body.time || 'Not provided'],
+    ['Venue', body.venue_name],
+    ['Address', body.venue_address],
+    ['Category', body.category],
+    ['Cost / tickets', body.cost || 'Free'],
+    ['Description', body.description || 'Not provided'],
+    ['Event URL', body.url || 'Not provided'],
+    ['Kid friendly', yesNo(body.kid_friendly)],
+    ['Pet friendly', yesNo(body.pet_friendly)],
+    ['21+ only', yesNo(body.age_21_plus)],
+    ['Submitted by', body.submitter_name],
+    ['Submitter email', body.submitter_email],
+    ['Submitted at', submittedAt],
+    ['Submission ID', id],
+  ];
+}
+
+async function sendTelegramSubmission(env, body, id) {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return;
+
+  const dateStr = body.date_start + (body.time ? ` @ ${body.time}` : '');
+  const approveUrl = `https://sm-tx.com/api/admin/events/${id}/approve?key=${env.API_KEY}`;
+  const rejectUrl  = `https://sm-tx.com/api/admin/events/${id}/reject?key=${env.API_KEY}`;
+  const msg = [
+    `📅 <b>New Event Submission — sm-tx.com</b>`,
+    ``,
+    `<b>${esc(body.name)}</b>`,
+    `📍 ${esc(body.venue_name)}`,
+    `🗓 ${esc(dateStr)}`,
+    `🏷 ${esc(body.category)}${body.cost && body.cost !== 'free' ? ` · ${esc(body.cost)}` : ' · free'}`,
+    ``,
+    `Submitted by: ${esc(body.submitter_name)} (${esc(body.submitter_email)})`,
+    ``,
+    `<a href="${approveUrl}">✅ Approve</a>   <a href="${rejectUrl}">🗑 Reject</a>`,
+  ].join('\n');
+
+  const response = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: env.TELEGRAM_CHAT_ID,
+      text: msg,
+      parse_mode: 'HTML',
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Telegram API returned ${response.status}`);
+  }
+}
+
+async function sendEmailSubmission(env, body, id, submittedAt) {
+  const hasDirectEmailConfig = Boolean(env.SUBMISSION_ALERT_TO && env.SUBMISSION_ALERT_FROM);
+  if (!env.SUBMISSION_EMAIL_WEBHOOK_SECRET && !hasDirectEmailConfig) return;
+
+  const details = submissionDetails(body, id, submittedAt);
+  const adminUrl = 'https://sm-tx.com/admin';
+  const subject = `New event submission: ${body.name}`;
+  const text = [
+    'A new event was submitted to sm-tx.com and is waiting for review.',
+    '',
+    ...details.map(([label, value]) => `${label}: ${value}`),
+    '',
+    `Review submission: ${adminUrl}`,
+  ].join('\n');
+  const rows = details.map(([label, value]) => `
+    <tr>
+      <td style="padding:7px 12px 7px 0;vertical-align:top;color:#6b7280;white-space:nowrap">${esc(label)}</td>
+      <td style="padding:7px 0;vertical-align:top;color:#111827;white-space:pre-wrap">${esc(value)}</td>
+    </tr>`).join('');
+  const html = `<!doctype html>
+    <html><body style="margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827">
+      <div style="max-width:680px;margin:0 auto;padding:24px">
+        <div style="background:#ffffff;border-radius:12px;padding:28px;border:1px solid #e5e7eb">
+          <div style="font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#0e7490">SM-TX Events</div>
+          <h1 style="margin:8px 0 10px;font-size:24px;line-height:1.25">New event submission</h1>
+          <p style="margin:0 0 18px;color:#4b5563;line-height:1.5">A community submission is waiting for review.</p>
+          <table role="presentation" style="width:100%;border-collapse:collapse;font-size:14px;line-height:1.45">${rows}</table>
+          <a href="${adminUrl}" style="display:inline-block;margin-top:22px;padding:11px 18px;border-radius:8px;background:#022c22;color:#ffffff;text-decoration:none;font-weight:700">Review in admin</a>
+        </div>
+      </div>
+    </body></html>`;
+  const message = {
+    to: env.SUBMISSION_ALERT_TO,
+    from: env.SUBMISSION_ALERT_FROM,
+    subject,
+    html,
+    text,
+  };
+
+  // Prefer a native Workers email binding when available. Pages deployments can
+  // use the Email Service REST API with a narrowly scoped API token instead.
+  if (hasDirectEmailConfig && env.EMAIL && typeof env.EMAIL.send === 'function') {
+    await env.EMAIL.send({ ...message, replyTo: body.submitter_email });
+    return;
+  }
+
+  if (env.SUBMISSION_EMAIL_WEBHOOK_SECRET) {
+    const webhookUrl = env.SUBMISSION_EMAIL_WEBHOOK_URL
+      || 'https://sm-tx-email-notifier.trinityvoxel.workers.dev/notify';
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.SUBMISSION_EMAIL_WEBHOOK_SECRET}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ...message, replyTo: body.submitter_email }),
+    });
+    if (!response.ok) {
+      throw new Error(`Submission email webhook returned ${response.status}`);
+    }
+    return;
+  }
+
+  if (!hasDirectEmailConfig || !env.CLOUDFLARE_EMAIL_API_TOKEN || !env.CLOUDFLARE_ACCOUNT_ID) return;
+  const response = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/email/sending/send`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.CLOUDFLARE_EMAIL_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ...message, reply_to: body.submitter_email }),
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`Cloudflare Email API returned ${response.status}`);
+  }
+}
+
+async function notifySubmission(env, body, id, submittedAt) {
+  const [telegram, email] = await Promise.allSettled([
+    sendTelegramSubmission(env, body, id),
+    sendEmailSubmission(env, body, id, submittedAt),
+  ]);
+  if (telegram.status === 'rejected') {
+    console.error('Telegram submission notification failed:', telegram.reason);
+  }
+  if (email.status === 'rejected') {
+    console.error('Email submission notification failed:', email.reason);
+  }
+}
+
 /**
  * Returns today's date string (YYYY-MM-DD) in America/Chicago (CST/CDT).
  * Avoids the UTC drift bug where dates after 6pm CST would return tomorrow's date.
@@ -364,32 +519,13 @@ export async function onRequest(context) {
         body.submitter_name, body.submitter_email,
         now, now
       ).run();
-      // Notify Andrew via Telegram (fire-and-forget — don't block the response)
-      if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
-        const dateStr = body.date_start + (body.time ? ` @ ${body.time}` : '');
-        const approveUrl = `https://sm-tx.com/api/admin/events/${id}/approve?key=${env.API_KEY}`;
-        const rejectUrl  = `https://sm-tx.com/api/admin/events/${id}/reject?key=${env.API_KEY}`;
-        const msg = [
-          `📅 <b>New Event Submission — sm-tx.com</b>`,
-          ``,
-          `<b>${esc(body.name)}</b>`,
-          `📍 ${esc(body.venue_name)}`,
-          `🗓 ${esc(dateStr)}`,
-          `🏷 ${esc(body.category)}${body.cost && body.cost !== 'free' ? ` · ${esc(body.cost)}` : ' · free'}`,
-          ``,
-          `Submitted by: ${esc(body.submitter_name)} (${esc(body.submitter_email)})`,
-          ``,
-          `<a href="${approveUrl}">✅ Approve</a>   <a href="${rejectUrl}">🗑 Reject</a>`,
-        ].join('\n');
-        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: env.TELEGRAM_CHAT_ID,
-            text: msg,
-            parse_mode: 'HTML',
-          }),
-        }).catch(() => {});
+      // Keep notification requests alive after returning the fast 201 response.
+      // The previous untracked fetch could be cancelled when the Function ended.
+      const notificationTask = notifySubmission(env, body, id, now);
+      if (typeof context.waitUntil === 'function') {
+        context.waitUntil(notificationTask);
+      } else {
+        await notificationTask;
       }
       return json({ id, status: 'pending', message: 'Event submitted for review.' }, 201);
     } catch (e) {

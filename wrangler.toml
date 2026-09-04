@@ -1,5 +1,4 @@
 name = "sm-tx"
-account_id = "b0ef593bf7a956362d767ca67535cfb1"
 compatibility_date = "2024-09-23"
 pages_build_output_dir = "dist"
 
@@ -17,5 +16,11 @@ database_id = "3c83f9e8-f37c-4d76-9548-a085f7892ade"
 # ADMIN_PASSWORD — dashboard login
 # TELEGRAM_BOT_TOKEN — Telegram notifications
 # TELEGRAM_CHAT_ID — Telegram chat ID
+# SUBMISSION_EMAIL_WEBHOOK_SECRET — shared secret for sm-tx-email-notifier
+# SUBMISSION_EMAIL_WEBHOOK_URL — optional override for the email notifier URL
+# CLOUDFLARE_EMAIL_API_TOKEN — API token scoped to Email Sending
+# CLOUDFLARE_ACCOUNT_ID — Cloudflare account containing sm-tx.com
+# SUBMISSION_ALERT_TO — verified destination address for new submissions
+# SUBMISSION_ALERT_FROM — sender on the sm-tx.com domain (for example events@sm-tx.com)
 # GITHUB_TOKEN — GitHub Actions trigger
 # GITHUB_REPO — e.g. "trinityvoxel/sm-tx"
