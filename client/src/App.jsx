@@ -9,6 +9,7 @@ import GuideDining from './pages/GuideDining.jsx';
 import GuideOutdoor from './pages/GuideOutdoor.jsx';
 import GuideHillCountry from './pages/GuideHillCountry.jsx';
 import Admin from './pages/Admin.jsx';
+import { trackPageView } from './analytics.js';
 
 const navStyle = {
   background: '#042f2e',
@@ -154,6 +155,17 @@ function ScrollToTop() {
   return null;
 }
 
+function AnalyticsPageView() {
+  const { pathname, search } = useLocation();
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => trackPageView(`${pathname}${search}`), 0);
+    return () => window.clearTimeout(timer);
+  }, [pathname, search]);
+
+  return null;
+}
+
 function Footer() {
   return (
     <footer style={{
@@ -197,6 +209,7 @@ export default function App() {
   return (
     <>
       <ScrollToTop />
+      <AnalyticsPageView />
       <nav style={navStyle}>
         <div style={innerNav}>
           <Link to="/" style={logoStyle}>

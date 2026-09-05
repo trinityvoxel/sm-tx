@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { API, CATEGORIES, CATEGORY_LABELS } from '../constants.js';
+import { trackEvent } from '../analytics.js';
 
 const fieldStyle = {
   width: '100%',
@@ -95,6 +96,10 @@ export default function Submit() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Submission failed');
+      trackEvent('generate_lead', {
+        lead_source: 'community_event_submission',
+        event_category: form.category,
+      });
       setSuccess(true);
     } catch (e) {
       setError(e.message);
