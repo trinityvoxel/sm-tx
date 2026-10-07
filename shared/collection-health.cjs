@@ -27,7 +27,7 @@ function jobHealth(job, runs, now = Date.now()) {
   const sources = metadata(last).sources;
   if (!Array.isArray(sources) || !sources.length || sources.some(s => !s.status)) return 'Legacy report — coverage unknown';
   if (sources.some(s => s.status === 'error')) return 'Failed / partial';
-  if (sources.some(s => s.status === 'review' || !s.count)) return 'Needs review';
+  if (sources.some(s => s.status !== 'out_of_season' && (s.status === 'review' || !s.count))) return 'Needs review';
   return 'Healthy';
 }
 function volumeDrop(current, previous) {

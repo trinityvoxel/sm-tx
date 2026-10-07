@@ -17,12 +17,15 @@ async function collectSource(source, fn, errors, reports) {
   catch (error) { errors.push(`[${source}] ${error.message}`); }
   const events = Array.isArray(result) ? result : result?.events || [];
   const report = sourceHealth(result?.source || source, events, errors.slice(offset));
+  if (result?.status === 'out_of_season' && !errors.slice(offset).length && !events.length) {
+    Object.assign(report, { status: 'out_of_season', reason: result.reason, season_end: result.season_end });
+  }
   reports.push(report);
   console.log(`[Source health] ${report.source}: ${report.status}; ${report.count} events; ${report.missing_time} missing times; ${report.missing_venue} missing venues`);
   return { source: report.source, events };
 }
-function finishRun(sources, errors, dryRun) {
-  const report = { checked_at: new Date().toISOString(), dry_run: dryRun, sources, errors };
+function finishRun(sources, errors, dryRun, diagnostics = []) {
+  const report = { checked_at: new Date().toISOString(), dry_run: dryRun, sources, errors, diagnostics };
   if (process.env.SM_TX_REPORT_PATH) fs.writeFileSync(process.env.SM_TX_REPORT_PATH, JSON.stringify(report, null, 2));
   if (process.env.GITHUB_STEP_SUMMARY) {
     const escape = value => String(value).replace(/[\r\n|<>]/g, ' ');

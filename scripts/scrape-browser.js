@@ -12,6 +12,8 @@ const { retryRead, collectSource, finishRun, postReport } = require('./collectio
 const { assertImportResponse } = require('../shared/collection-health.cjs');
 const runErrors = [];
 const sourceResults = [];
+const navigationDiagnostics = [];
+const { sourceSeason } = require('../shared/source-seasons.cjs');
 function recordError(...messages) {
   const message = messages.map(String).join(' ');
   runErrors.push(message);
@@ -293,7 +295,16 @@ async function safeNavigate(page, url, timeout = 25000) {
   await retryRead(async () => {
     const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout });
     if (!isDomainApproved(page.url())) throw new Error('Domain not approved after redirect');
-    if (response && !response.ok()) throw new Error(`Source HTTP ${response.status()}`);
+    if (response && !response.ok()) {
+      const headers = response.headers();
+      const title = await page.title().catch(() => '');
+      const diagnostic = { url, final_url: page.url(), status: response.status(),
+        server: headers.server || null, content_type: headers['content-type'] || null,
+        mitigation: headers['cf-mitigated'] || null, title: title.slice(0, 200) };
+      navigationDiagnostics.push(diagnostic);
+      console.warn('[Navigation diagnostic]', JSON.stringify(diagnostic));
+      throw new Error(`Source HTTP ${response.status()} (${title.slice(0, 80) || 'no page title'})`);
+    }
   });
 }
 
@@ -1349,6 +1360,8 @@ async function scrapeIndustryTX(browser) {
 // Structure (2026 page): each date header with a list of artist/time entries.
 
 async function scrapeSummerInThePark(browser) {
+  const season = sourceSeason('summer-in-the-park', fmtDate(TODAY));
+  if (season) return {source: 'Summer in the Park', events: [], ...season};
   await upsertEventSource({
     id: 'summer-in-the-park',
     type: 'web',
@@ -1517,8 +1530,8 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   const results = [];
 
-  for (const scraper of [scrapeTaproom, scrapeVisitSanMarcos, scrapeVisitSanMarcosCalendar, scrapeDowntownSanMarcos, scrapeVisitSMListenLive, scrapeCheathamStreet, scrapeIndustryTX, scrapeSummerInThePark]) {
-    const result = await collectSource(scraper.name, async () => {
+  for (const [label, scraper] of [['Taproom San Marcos',scrapeTaproom], ['Visit San Marcos',scrapeVisitSanMarcos], ['Visit San Marcos Calendar',scrapeVisitSanMarcosCalendar], ['Downtown San Marcos',scrapeDowntownSanMarcos], ['Visit San Marcos Live Music',scrapeVisitSMListenLive], ['Cheatham Street Warehouse',scrapeCheathamStreet], ['Downtown Industry',scrapeIndustryTX], ['Summer in the Park',scrapeSummerInThePark]]) {
+    const result = await collectSource(label, async () => {
       const result = await scraper(browser);
       for (const event of result.events) {
         if ((!event.time || genericVenue(event.venue_name)) && event.url && isDomainApproved(event.url)) {
@@ -1625,4 +1638,4 @@ main().catch(async err => {
   recordError('Fatal error:', err);
   await reportRun(_scriptStart, 'error', 0, 0, err.message).catch(() => {});
   process.exitCode = 1;
-}).finally(() => finishRun(sourceResults, runErrors, DRY_RUN));
+}).finally(() => finishRun(sourceResults, runErrors, DRY_RUN, navigationDiagnostics));
