@@ -14,6 +14,7 @@ const runErrors = [];
 const sourceResults = [];
 const navigationDiagnostics = [];
 const { sourceSeason } = require('../shared/source-seasons.cjs');
+const recoverTicketDetail = require('./ticket-details.cjs').createTicketRecovery();
 function recordError(...messages) {
   const message = messages.map(String).join(' ');
   runErrors.push(message);
@@ -1534,6 +1535,7 @@ async function main() {
     const result = await collectSource(label, async () => {
       const result = await scraper(browser);
       for (const event of result.events) {
+        await recoverTicketDetail(event);
         if ((!event.time || genericVenue(event.venue_name)) && event.url && isDomainApproved(event.url)) {
           applyDetail(event, await readEventDetail(browser, event.url));
         }
@@ -1570,6 +1572,7 @@ async function main() {
   console.log(`  Total unique events: ${deduped.length}`);
 
   if (DRY_RUN) {
+    if (process.env.SM_TX_EVENTS_PATH) require('node:fs').writeFileSync(process.env.SM_TX_EVENTS_PATH, JSON.stringify(deduped, null, 2));
     console.log('\n[DRY RUN] Events (not posted):');
     for (const ev of deduped) {
       console.log(`  • [${ev.date_start}] ${ev.name} @ ${ev.venue_name} (${ev.category})`);

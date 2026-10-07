@@ -46,6 +46,7 @@ jobs:
       - name: Run browser scraper
         working-directory: scripts
         env:
+          SM_TX_EVENTS_PATH: ${{ runner.temp }}/collection-events.json
           SM_TX_REPORT_PATH: ${{ runner.temp }}/collection-health.json
           TZ: America/Chicago
           SM_TX_API_KEY: ${{ github.ref == 'refs/heads/main' && github.event.inputs.dry_run != 'true' && secrets.SM_TX_API_KEY || '' }}
@@ -63,6 +64,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: collection-health
-          path: ${{ runner.temp }}/collection-health.json
+          path: ${{ runner.temp }}/collection-*.json
           retention-days: 7
           if-no-files-found: warn
