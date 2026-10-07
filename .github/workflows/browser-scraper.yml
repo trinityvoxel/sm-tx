@@ -2,8 +2,8 @@ name: SM-TX Browser Scraper
 
 on:
   schedule:
-    # Every Wednesday at 5:30 AM CST (11:30 UTC)
-    - cron: '30 11 * * 3'
+    # Tuesday and Friday at 11:43 UTC.
+    - cron: '43 11 * * 2,5'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -11,6 +11,13 @@ on:
         required: false
         default: 'false'
         type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-scraper
+  cancel-in-progress: false
 
 jobs:
   scrape:
@@ -39,12 +46,23 @@ jobs:
       - name: Run browser scraper
         working-directory: scripts
         env:
-          SM_TX_API_KEY: ${{ secrets.SM_TX_API_KEY }}
+          SM_TX_REPORT_PATH: ${{ runner.temp }}/collection-health.json
+          TZ: America/Chicago
+          SM_TX_API_KEY: ${{ github.ref == 'refs/heads/main' && github.event.inputs.dry_run != 'true' && secrets.SM_TX_API_KEY || '' }}
           SM_TX_API_ENDPOINT: https://sm-tx.com/api/admin/import
           SM_TX_JOB_REPORT: https://sm-tx.com/api/admin/jobs/smtx-browser-scraper/runs
         run: |
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+          if [ "${{ github.ref }}" != "refs/heads/main" ] || [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             node scrape-browser.js --dry-run
           else
             node scrape-browser.js
           fi
+
+      - name: Save collection health report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: collection-health
+          path: ${{ runner.temp }}/collection-health.json
+          retention-days: 7
+          if-no-files-found: warn

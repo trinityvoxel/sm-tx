@@ -3,9 +3,23 @@
 // Playwright-based headless browser scraper for JS-rendered San Marcos event sources.
 // Sources: taproomsanmarcos.com (Google Calendar iframes), visitsanmarcos.com, downtownSanMarcos.com
 
+const { detailBackfill } = require('../shared/detail-fields.cjs');
+const { calendarDate, instantDate } = require('../shared/event-dates.cjs');
+const { guessCategory } = require('../shared/category.cjs');
+const { startTime, structuredTime } = require('../shared/schedule.cjs');
 const { chromium } = require('playwright');
+const { retryRead, collectSource, finishRun, postReport } = require('./collection-runtime.cjs');
+const { assertImportResponse } = require('../shared/collection-health.cjs');
+const runErrors = [];
+const sourceResults = [];
+function recordError(...messages) {
+  const message = messages.map(String).join(' ');
+  runErrors.push(message);
+  console.error(message);
+}
 const https = require('https');
 const http = require('http');
+const { genericVenue, resolveVenue } = require('../shared/venue.cjs');
 
 const DRY_RUN = process.argv.includes('--dry-run');
 const IMPORT_API = process.env.SM_TX_API_ENDPOINT || 'https://sm-tx.com/api/admin/import';
@@ -81,6 +95,7 @@ function isKnownStaleEvent(event) {
 }
 
 function sanitize(event) {
+  Object.assign(event, resolveVenue(event));
   if (isKnownStaleEvent(event)) {
     console.warn(`  [STALE] Discarding ${event.name} on ${event.date_start}`);
     return null;
@@ -275,7 +290,11 @@ function upsertEventSource({ id, type, name, url, frequency }) {
 
 async function safeNavigate(page, url, timeout = 25000) {
   if (!isDomainApproved(url)) throw new Error(`Domain not approved: ${url}`);
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout });
+  await retryRead(async () => {
+    const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout });
+    if (!isDomainApproved(page.url())) throw new Error('Domain not approved after redirect');
+    if (response && !response.ok()) throw new Error(`Source HTTP ${response.status()}`);
+  });
 }
 
 async function waitForNetworkIdle(page, timeout = 12000) {
@@ -283,24 +302,6 @@ async function waitForNetworkIdle(page, timeout = 12000) {
   catch { await page.waitForTimeout(2000); }
 }
 
-function guessCategory(text) {
-  const lower = (text || '').toLowerCase();
-
-  // Music: be generous — generic "music" plus common live-music patterns
-  if (/(live\s*music|music\s*live|\blive\b.*\bmusic\b|\bmusic\b.*\blive\b|band|concert|dj\b|karaoke|bingo.*music|benefit)/.test(lower)) {
-    return 'music';
-  }
-
-  if (/comedy|open\s*mic|improv|theater|theatre|gallery|art\s+show|art\s+market|film|movie/.test(lower)) return 'arts';
-  if (/food|drink|taste|chef|culinary|eat|wine|beer|brew/.test(lower)) return 'food';
-  if (/festival|fest\b/.test(lower)) return 'festivals';
-  if (/market\b/.test(lower)) return 'markets';
-  if (/hike|trail|run|walk|outdoor|nature|bird/.test(lower)) return 'outdoor';
-  if (/sport|race|marathon|5k|game\b|soccer|football/.test(lower)) return 'sports';
-  if (/trivia|bingo|game night/.test(lower)) return 'community';
-  if (/bar|club|nightlife|pool night|drag/.test(lower)) return 'nightlife';
-  return 'community';
-}
 
 function stripHtml(s) {
   return String(s || '')
@@ -512,53 +513,13 @@ async function scrapeTaproom(browser) {
       // Read all visible text on page
       const pageText = await page.evaluate(() => document.body.innerText);
       
-      // The Taproom events page shows recurring events visible from screenshot:
-      // Karaoke with Kiki (Mondays), Free Pool Night & Karaoke (Tuesdays & Wednesdays), 
-      // Live music shows (weekends), etc.
-      // Generate the next 90 days of recurring events
-      const recurringEvents = [
-        { name: 'Karaoke with Kiki', weekday: 1, time: '9:00 PM', category: 'nightlife' },
-        { name: 'Free Pool Night', weekday: 2, time: '8:00 PM', category: 'nightlife' },
-        { name: 'Karaoke with Kiki', weekday: 2, time: '9:00 PM', category: 'nightlife' },
-        { name: 'Wax Wednesdays', weekday: 3, time: '9:00 PM', category: 'music' },
-        { name: 'Free Pool Night', weekday: 3, time: '8:00 PM', category: 'nightlife' },
-      ];
-
-      // Also look for specific one-off events from page text
       console.log(`[${SOURCE}] Page text length: ${pageText.length} chars`);
-      
-      const today = new Date(TODAY);
-      for (let i = 0; i < 90; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() + i);
-        const iso = fmtDate(d);
-        const weekday = d.getDay();
-
-        for (const re of recurringEvents) {
-          if (re.weekday === weekday) {
-            const event = {
-              name: re.name,
-              date_start: iso,
-              time: re.time,
-              venue_name: VENUE_NAME,
-              venue_address: VENUE_ADDRESS,
-              category: re.category,
-              description: 'Recurring weekly event at The Taproom San Marcos',
-              url: PAGE_URL,
-              age_21_plus: true,
-              kid_friendly: false,
-              source: 'scraped',
-            };
-            const clean = sanitize(event);
-            if (clean) events.push(clean);
-          }
-        }
-      }
+      console.warn(`[${SOURCE}] No dated calendar entries; poster-only details require review. No recurring dates invented.`);
     }
 
     console.log(`[${SOURCE}] Total events: ${events.length}`);
   } catch (err) {
-    console.error(`[${SOURCE}] ERROR: ${err.message}`);
+    recordError(`[${SOURCE}] ERROR: ${err.message}`);
   } finally {
     await page.close();
   }
@@ -659,8 +620,7 @@ async function scrapeVisitSanMarcos(browser) {
             if (!isWithinLookahead(isoDate)) { i++; continue; }
 
             // Guess category
-            const lower = (name + ' ' + description).toLowerCase();
-            const category = guessCategory(lower);
+            const category = guessCategory(name, description);
 
             // Skip lines that are clearly not event names
             if (name.length < 5 || name.length > 100) { i++; continue; }
@@ -728,96 +688,16 @@ async function scrapeVisitSanMarcos(browser) {
 
         console.log(`[${SOURCE}] Extracted ${events.length} events from ${url}`);
       } catch (err) {
-        console.error(`[${SOURCE}] Failed ${url}: ${err.message}`);
+        recordError(`[${SOURCE}] Failed ${url}: ${err.message}`);
       }
     }
   } finally {
     await page.close();
   }
 
-  // Add well-known recurring San Marcos events from the page we saw
-  // (These are confirmed real events from the scrape)
-  const wellKnown = [
-    {
-      name: "Farmer's Market at the Downtown Square",
-      weekday: 6, // Saturday
-      time: '9:00 AM',
-      venue_name: "Downtown Square",
-      venue_address: "Downtown Square on San Antonio St, San Marcos, TX 78666",
-      category: 'markets',
-      description: "Farm-fresh produce and homemade products. Saturdays 9am-1pm.",
-      url: SUBPAGES[0],
-    },
-    {
-      name: "Art Squared Arts Market",
-      nthWeekday: { n: 2, day: 6 }, // 2nd Saturday
-      time: '9:00 AM',
-      venue_name: "Downtown Square",
-      venue_address: "San Marcos Downtown Square, San Marcos, TX 78666",
-      category: 'markets',
-      description: "Juried arts and fine crafts market. 2nd Saturdays March-December.",
-      url: SUBPAGES[0],
-    },
-  ];
+  // Do not manufacture occurrences from a hard-coded market schedule.
+  // Only the current source extraction above contributes events.
 
-  // Generate upcoming occurrences of well-known events
-  const today = new Date(TODAY);
-  for (const wk of wellKnown) {
-    if (wk.weekday !== undefined) {
-      // All occurrences of this weekday
-      const d = new Date(today);
-      let count = 0;
-      while (count < 12) {
-        if (d.getDay() === wk.weekday) {
-          const iso = fmtDate(d);
-          if (isWithinLookahead(iso)) {
-            const event = {
-              name: wk.name,
-              date_start: iso,
-              time: wk.time,
-              venue_name: wk.venue_name,
-              venue_address: wk.venue_address,
-              category: wk.category,
-              description: wk.description,
-              url: wk.url,
-              source: 'scraped',
-            };
-            const clean = sanitize(event);
-            if (clean) events.push(clean);
-            count++;
-          }
-        }
-        d.setDate(d.getDate() + 1);
-        if (d > LOOKAHEAD_DATE) break;
-      }
-    } else if (wk.nthWeekday) {
-      // Nth occurrence each month
-      let year = today.getFullYear();
-      let month = today.getMonth() + 1;
-      for (let m = 0; m < 4; m++) { // Check next 4 months
-        const mo = ((month - 1 + m) % 12) + 1;
-        const yr = year + Math.floor((month - 1 + m) / 12);
-        const iso = nthWeekdayOfMonth(yr, mo, wk.nthWeekday.day, wk.nthWeekday.n);
-        if (iso && isWithinLookahead(iso)) {
-          const event = {
-            name: wk.name,
-            date_start: iso,
-            time: wk.time,
-            venue_name: wk.venue_name,
-            venue_address: wk.venue_address,
-            category: wk.category,
-            description: wk.description,
-            url: wk.url,
-            source: 'scraped',
-          };
-          const clean = sanitize(event);
-          if (clean) events.push(clean);
-        }
-      }
-    }
-  }
-
-  console.log(`[${SOURCE}] Total events: ${events.length}`);
   return { source: SOURCE, events };
 }
 
@@ -843,12 +723,13 @@ async function scrapeVisitSanMarcosCalendar(browser) {
     await safeNavigate(page, PAGE_URL, 35000);
     await waitForNetworkIdle(page, 10000);
 
+    await page.waitForFunction(() => typeof window.require === 'function', null, { timeout: 15000 });
     const docs = await page.evaluate(async ({ todayIso, lookaheadIso }) => {
       function getToken() {
         return new Promise(resolve => {
           if (typeof window.require !== 'function') return resolve(null);
           try {
-            window.require(['plugins_core/main'], core => resolve(core && core.simpleToken ? core.simpleToken : null));
+            window.require(['plugins_core/main'], core => resolve(core?.simpleToken || null), () => resolve(null));
             setTimeout(() => resolve(null), 10000);
           } catch {
             resolve(null);
@@ -899,28 +780,38 @@ async function scrapeVisitSanMarcosCalendar(browser) {
       const name = String(doc.title || '').trim();
       if (!name || name.length < 3) continue;
 
-      const date_start = doc.date ? fmtDate(new Date(doc.date)) : toISO(doc.startDate);
+      const date_start = calendarDate(doc.date) || instantDate(doc.startDate) || calendarDate(doc.startDate);
       if (!isWithinLookahead(date_start)) continue;
 
       const categoryText = Array.isArray(doc.categories)
         ? doc.categories.map(c => c.catName || '').join(' ')
         : '';
-      const venueName = doc.location || doc.hostname || doc.listing?.title || 'San Marcos';
+      const venueName = typeof doc.location === 'string' ? doc.location : doc.location?.name || doc.listing?.title || 'San Marcos';
       const addressParts = [doc.address1, doc.address2, doc.city || 'San Marcos', doc.state || 'TX', doc.zip].filter(Boolean);
       const description = stripHtml(doc.description).slice(0, 500) || undefined;
 
       const event = {
         name: name.slice(0, 150),
+        date_evidence: { provider: 'visit-san-marcos-calendar', calendar_date: doc.date, start_date: doc.startDate },
         date_start,
+        time: startTime(doc.times || doc.time || doc.startTime) || structuredTime(doc.startDate, date_start),
         venue_name: String(venueName).slice(0, 150),
         venue_address: addressParts.length ? addressParts.join(', ') : 'San Marcos, TX',
-        category: guessCategory(`${name} ${categoryText} ${description || ''}`),
+        category: guessCategory(name, `${categoryText} ${description || ''}`),
         description,
         url: absoluteUrl(PAGE_URL, doc.url || doc.linkUrl),
         source: 'scraped',
         cost: doc.admission ? String(doc.admission).slice(0, 100) : undefined,
       };
 
+      Object.assign(event, resolveVenue(event, doc));
+      // Cache each detail URL across recurring occurrences; keep the same date checks.
+      const detailUrl = event.url;
+      if ((genericVenue(event.venue_name) || !event.time) && /^https:\/\/www\.visitsanmarcos\.com\/event\//.test(detailUrl || '')) {
+        const details = await readEventDetail(browser, detailUrl);
+        applyDetail(event, details);
+      }
+      if (genericVenue(event.venue_name)) console.warn(`[${SOURCE}] Venue unresolved: ${event.name} (${detailUrl})`);
       const clean = sanitize(event);
       if (clean) events.push(clean);
     }
@@ -1089,7 +980,7 @@ async function scrapeDowntownSanMarcos(browser) {
       found = true;
       break;
     } catch (err) {
-      console.error(`[${SOURCE}] Failed ${url}: ${err.message}`);
+      recordError(`[${SOURCE}] Failed ${url}: ${err.message}`);
     }
   }
 
@@ -1227,7 +1118,7 @@ async function scrapeVisitSMListenLive(_browser) {
       }
     }
   } catch (err) {
-    console.error(`[${SOURCE}] Error: ${err.message}`);
+    recordError(`[${SOURCE}] Error: ${err.message}`);
   }
 
   console.log(`[${SOURCE}] Total events: ${events.length}`);
@@ -1335,7 +1226,7 @@ async function scrapeCheathamStreet(browser) {
       }
     }
   } catch (err) {
-    console.error(`[${SOURCE}] Error: ${err.message}`);
+    recordError(`[${SOURCE}] Error: ${err.message}`);
   } finally {
     await page.close();
   }
@@ -1434,7 +1325,7 @@ async function scrapeIndustryTX(browser) {
         time,
         venue_name,
         venue_address: DEFAULT_ADDRESS,
-        category: guessCategory(`${raw.name} ${raw.description}`),
+        category: guessCategory(raw.name, raw.description),
         description: raw.description ? raw.description.slice(0, 500) : undefined,
         url: eventUrl,
         image_url: raw.imageUrl || null,
@@ -1444,7 +1335,7 @@ async function scrapeIndustryTX(browser) {
       if (event) events.push(event);
     }
   } catch (err) {
-    console.error(`[${SOURCE}] Error: ${err.message}`);
+    recordError(`[${SOURCE}] Error: ${err.message}`);
   } finally {
     await page.close();
   }
@@ -1564,13 +1455,53 @@ async function scrapeSummerInThePark(browser) {
       if (event) events.push(event);
     }
   } catch (err) {
-    console.error(`[${SOURCE}] Error: ${err.message}`);
+    recordError(`[${SOURCE}] Error: ${err.message}`);
   } finally {
     await page.close();
   }
 
   console.log(`[${SOURCE}] Done — ${events.length} events`);
   return { source: SOURCE, events };
+}
+
+// A bounded, per-run detail cache prevents recurring events from multiplying requests.
+const detailCache = new Map();
+let detailDeadline = null;
+async function readEventDetail(browser, url) {
+  if (detailCache.has(url)) return detailCache.get(url);
+  detailDeadline ||= Date.now() + 180000;
+  if (!isDomainApproved(url) || detailCache.size >= 40 || Date.now() > detailDeadline) return null;
+  detailCache.set(url, null);
+  const page = await browser.newPage();
+  try {
+    await safeNavigate(page, url, 12000);
+    const details = await page.evaluate(() => {
+      const schemas = [];
+      const visit = value => {
+        if (Array.isArray(value)) value.forEach(visit);
+        else if (value && typeof value === 'object') {
+          if ([value['@type']].flat().some(t => typeof t === 'string' && /Event$/.test(t))) schemas.push(value);
+          if (value['@graph']) visit(value['@graph']);
+        }
+      };
+      document.querySelectorAll('script[type="application/ld+json"]').forEach(el => {
+        try { visit(JSON.parse(el.textContent)); } catch { /* malformed publisher data */ }
+      });
+      const fields = Object.fromEntries(Array.from(document.querySelectorAll('dt')).map(d =>
+        [d.textContent.trim().replace(/:$/, ''), d.nextElementSibling?.textContent.trim() || '']));
+      return { schemas, name: document.querySelector('h1')?.textContent.trim(), fields };
+    });
+    detailCache.set(url, details);
+    return details;
+  } catch (error) {
+    console.warn(`[Detail review] ${url}: ${error.message}`);
+    return null;
+  } finally { await page.close(); }
+}
+function applyDetail(event, details) {
+  if (!details) return;
+  Object.assign(event, detailBackfill(event, details));
+  event.date_evidence = { ...event.date_evidence, detail: { url: event.url, fields: details.fields } };
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -1587,13 +1518,15 @@ async function main() {
   const results = [];
 
   for (const scraper of [scrapeTaproom, scrapeVisitSanMarcos, scrapeVisitSanMarcosCalendar, scrapeDowntownSanMarcos, scrapeVisitSMListenLive, scrapeCheathamStreet, scrapeIndustryTX, scrapeSummerInThePark]) {
-    let result;
-    try {
-      result = await scraper(browser);
-    } catch (err) {
-      console.error(`[SCRAPER FATAL] ${scraper.name}: ${err.message}`);
-      result = { source: scraper.name, events: [] };
-    }
+    const result = await collectSource(scraper.name, async () => {
+      const result = await scraper(browser);
+      for (const event of result.events) {
+        if ((!event.time || genericVenue(event.venue_name)) && event.url && isDomainApproved(event.url)) {
+          applyDetail(event, await readEventDetail(browser, event.url));
+        }
+      }
+      return result;
+    }, runErrors, sourceResults);
     results.push(result);
   }
 
@@ -1635,6 +1568,7 @@ async function main() {
 
   if (deduped.length === 0) {
     console.log('No events to POST.');
+    await reportRun(started, runErrors.length ? 'error' : 'success', 0, 0, runErrors.join('; ') || null);
     return;
   }
 
@@ -1647,12 +1581,13 @@ async function main() {
     console.log(`\nPosting batch ${Math.floor(i/BATCH_SIZE)+1} (${batch.length} events)...`);
     try {
       const res = await postEvents(batch);
+      assertImportResponse(res);
       console.log(`  HTTP ${res.status} | Inserted: ${res.body?.inserted ?? '?'} | Skipped: ${res.body?.skipped ?? '?'}`);
       totalInserted += res.body?.inserted || 0;
       totalSkipped += res.body?.skipped || 0;
-      if (res.body?.details) console.log(`  Details: ${JSON.stringify(res.body.details).slice(0, 200)}`);
+      if (res.body?.details) console.log(`  Details: ${JSON.stringify(res.body.details)}`);
     } catch (err) {
-      console.error(`  POST failed: ${err.message}`);
+      recordError(`  POST failed: ${err.message}`);
     }
   }
 
@@ -1666,37 +1601,28 @@ async function main() {
   console.log(`${'='.repeat(60)}\n`);
 
   // Report run to dashboard
-  await reportRun(started, 'success', totalInserted, totalSkipped, null).catch(() => {});
-  console.log('Run reported to dashboard.');
+  await reportRun(started, runErrors.length ? 'error' : 'success', totalInserted, totalSkipped, runErrors.join('; ') || null).catch(() => {});
+  console.log('Collection finished; see source health report.');
 }
 
 async function reportRun(started, status, inserted, skipped, error) {
   const key = process.env.SM_TX_API_KEY;
-  if (!key) return;
+  if (!key || DRY_RUN) return;
   const endpoint = process.env.SM_TX_JOB_REPORT || 'https://sm-tx.com/api/admin/jobs/smtx-browser-scraper/runs';
   const body = JSON.stringify({
     started_at: started,
     finished_at: new Date().toISOString(),
     status,
     error_message: error || null,
-    meta: { inserted, skipped },
+    meta: { inserted, skipped, sources:sourceResults, errors:runErrors },
   });
-  const url = new URL(endpoint);
-  return new Promise((resolve) => {
-    const req = https.request({
-      hostname: url.hostname, path: url.pathname, method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-SM-TX-Key': key, 'Content-Length': Buffer.byteLength(body) },
-      timeout: 10000,
-    }, (res) => { res.resume(); resolve(); });
-    req.on('error', () => resolve());
-    req.write(body);
-    req.end();
-  });
+  try { await postReport(endpoint, key, JSON.parse(body)); }
+  catch (error) { recordError(error.message); }
 }
 
 const _scriptStart = new Date().toISOString();
 main().catch(async err => {
-  console.error('Fatal error:', err);
+  recordError('Fatal error:', err);
   await reportRun(_scriptStart, 'error', 0, 0, err.message).catch(() => {});
-  process.exit(1);
-});
+  process.exitCode = 1;
+}).finally(() => finishRun(sourceResults, runErrors, DRY_RUN));
