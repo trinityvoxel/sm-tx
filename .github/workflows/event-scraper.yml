@@ -2,8 +2,8 @@ name: SM-TX Event Scraper
 
 on:
   schedule:
-    # Every Wednesday at 5:00 AM CST (11:00 UTC)
-    - cron: '0 11 * * 3'
+    # Daily at 11:17 UTC; off the hourly scheduling peak.
+    - cron: '17 11 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -11,6 +11,13 @@ on:
         required: false
         default: 'false'
         type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: event-scraper
+  cancel-in-progress: false
 
 jobs:
   scrape:
@@ -28,6 +35,8 @@ jobs:
 
       - name: Run event scraper
         env:
+          SM_TX_REPORT_PATH: ${{ runner.temp }}/collection-health.json
+          TZ: America/Chicago
           SM_TX_API_KEY: ${{ secrets.SM_TX_API_KEY }}
           SM_TX_API_ENDPOINT: https://sm-tx.com/api/admin/import
           SM_TX_JOB_REPORT: https://sm-tx.com/api/admin/jobs/smtx-event-scraper/runs
@@ -37,3 +46,12 @@ jobs:
           else
             node scripts/scrape-events.js
           fi
+
+      - name: Save collection health report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: collection-health
+          path: ${{ runner.temp }}/collection-health.json
+          retention-days: 7
+          if-no-files-found: warn

@@ -2,3 +2,8 @@ node_modules/
 .wrangler/
 dist/
 *.env
+
+.server/
+.dev.vars
+playwright-report/
+test-results/

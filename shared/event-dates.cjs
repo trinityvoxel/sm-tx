@@ -15,7 +15,9 @@ function instantDate(value) {
 function dateIssue(event) {
   const date = calendarDate(event.date_start);
   if (!date) return 'Invalid calendar date';
-  const match = String(event.name || '').match(/\b(first|second|third|fourth|fifth|last)\s+(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\b/i);
+  const titleMatch = String(event.name || '').match(/\b(first|second|third|fourth|fifth|last)\s+(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\b/i);
+  const descriptionMatch = String(event.description || '').match(/\b(?:every|each)\s+((?:first|second|third|fourth|fifth|last)\s+(?:Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday))\b/i);
+  const match = titleMatch || (descriptionMatch && descriptionMatch[1].match(/(first|second|third|fourth|fifth|last)\s+(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)/i));
   if (!match) {
     const weekly = String(event.description || '').match(/\b(?:every|each)\s+(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\b/i);
     if (weekly) {
@@ -29,6 +31,6 @@ function dateIssue(event) {
   const ordinal = ['first','second','third','fourth','fifth'].indexOf(match[1].toLowerCase()) + 1;
   const nextWeek = new Date(day); nextWeek.setUTCDate(day.getUTCDate()+7);
   const ordinalMatches = ordinal ? Math.ceil(day.getUTCDate()/7) === ordinal : nextWeek.getUTCMonth() !== day.getUTCMonth();
-  return day.getUTCDay() !== weekday || !ordinalMatches ? `Date ${date} conflicts with title recurrence “${match[0]}”; verify an organizer exception before approval` : null;
+  return day.getUTCDay() !== weekday || !ordinalMatches ? `Date ${date} conflicts with ${titleMatch ? 'title' : 'source'} recurrence “${match[0]}”; verify an organizer exception before approval` : null;
 }
 module.exports = { calendarDate, instantDate, dateIssue };

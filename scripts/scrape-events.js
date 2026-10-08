@@ -5,6 +5,19 @@
  * No AI required. Pure fetch + parse.
  */
 
+const { parseCityCalendar } = require('../shared/city-calendar.cjs');
+const { parseTXSTItem } = require('../shared/txst.cjs');
+const { retryRead, collectSource, finishRun, postReport } = require('./collection-runtime.cjs');
+const { detailBackfill, schemasFromHtml } = require('../shared/detail-fields.cjs');
+const { genericVenue } = require('../shared/venue.cjs');
+const { assertImportResponse } = require('../shared/collection-health.cjs');
+const runErrors = [];
+const sourceResults = [];
+function recordError(...messages) {
+  const message = messages.map(String).join(' ');
+  runErrors.push(message);
+  console.error(message);
+}
 const https = require('https');
 const http = require('http');
 const { URL } = require('url');
@@ -15,7 +28,7 @@ const JOB_REPORT_ENDPOINT = process.env.SM_TX_JOB_REPORT || 'https://sm-tx.com/a
 const DRY_RUN = process.argv.includes('--dry-run');
 
 if (!API_KEY && !DRY_RUN) {
-  console.error('SM_TX_API_KEY is required');
+  recordError('SM_TX_API_KEY is required');
   process.exit(1);
 }
 
@@ -43,8 +56,12 @@ function fmtDate(d) {
 }
 
 function fetchUrl(urlStr, opts = {}) {
+  return retryRead(() => fetchOnce(urlStr, opts));
+}
+function fetchOnce(urlStr, opts = {}, redirects = 0) {
   return new Promise((resolve, reject) => {
     const url = new URL(urlStr);
+    if (opts.allowedHost && url.hostname !== opts.allowedHost) return reject(new Error('Domain not approved for detail redirect'));
     const client = url.protocol === 'https:' ? https : http;
     const options = {
       hostname: url.hostname,
@@ -59,8 +76,11 @@ function fetchUrl(urlStr, opts = {}) {
       // Follow redirects
       if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
         const next = new URL(res.headers.location, urlStr).href;
-        return fetchUrl(next, opts).then(resolve).catch(reject);
+        res.resume();
+        if (redirects >= 5) return reject(new Error('Source redirect limit'));
+        return fetchOnce(next, opts, redirects + 1).then(resolve).catch(reject);
       }
+      if (res.statusCode < 200 || res.statusCode >= 300) { res.resume(); reject(new Error('Source HTTP '+res.statusCode)); return; }
       let data = '';
       res.on('data', c => data += c);
       res.on('end', () => resolve({ status: res.statusCode, body: data }));
@@ -81,61 +101,12 @@ async function scrapeTXST() {
     console.log(`[TXST] ${items.length} RSS items found`);
 
     for (const item of items) {
-      const title = (item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) ||
-                     item.match(/<title>(.*?)<\/title>/))?.[1]?.trim();
-      const desc  = (item.match(/<description><!\[CDATA\[([\s\S]*?)\]\]><\/description>/) ||
-                     item.match(/<description>([\s\S]*?)<\/description>/))?.[1] || '';
-      const link  = item.match(/<link>(.*?)<\/link>/)?.[1]?.trim();
-      if (!title) continue;
-
-      // Extract date from description — format: "Monday, March 18, 2026" or "Ongoing through..."
-      const dateMatch = desc.match(
-        /(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),\s+(\d{4})/i
-      );
-      if (!dateMatch) continue;
-
-      const MONTHS = { january:1,february:2,march:3,april:4,may:5,june:6,
-                       july:7,august:8,september:9,october:10,november:11,december:12 };
-      const month = MONTHS[dateMatch[1].toLowerCase()];
-      const day = parseInt(dateMatch[2]);
-      const year = parseInt(dateMatch[3]);
-      const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-      if (!isUpcoming(dateStr)) continue;
-
-      // Extract time if present
-      const timeMatch = desc.match(/(\d{1,2}(?::\d{2})?(?:am|pm))/i);
-      const time = timeMatch ? timeMatch[1] : null;
-
-      // Clean description
-      const cleanDesc = desc
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/&#\d+;/g,'')
-        .replace(/\s+/g,' ').trim().slice(0, 400);
-
-      // Classify category
-      const lower = (title + ' ' + cleanDesc).toLowerCase();
-      let category = 'community';
-      if (/concert|music|band|perform|recital|jazz|choir/.test(lower)) category = 'music';
-      else if (/sport|athlet|game|match|tournament|baseball|basketball|soccer|tennis|golf|track/.test(lower)) category = 'sports';
-      else if (/exhibit|art|gallery|museum|photo/.test(lower)) category = 'arts';
-      else if (/graduation|commencement|ceremony|lecture|speaker/.test(lower)) category = 'education';
-
-      events.push({
-        name: title,
-        date_start: dateStr,
-        time,
-        venue_name: 'Texas State University',
-        venue_address: '601 University Dr, San Marcos, TX 78666',
-        category,
-        description: cleanDesc || null,
-        url: link || 'https://events.txst.edu',
-        cost: 'free',
-        kid_friendly: !/(21\+|alcohol|beer|wine|bar)/i.test(cleanDesc),
-        source: 'scraped',
-      });
+      const event = parseTXSTItem(item);
+      if (event && (isUpcoming(event.date_start) || (event.date_start <= fmtDate(TODAY) && event.date_end >= fmtDate(TODAY)))) events.push(event);
     }
+
   } catch (e) {
-    console.error(`[TXST] Error: ${e.message}`);
+    recordError(`[TXST] Error: ${e.message}`);
   }
   console.log(`[TXST] ${events.length} upcoming events`);
   return events;
@@ -173,38 +144,18 @@ async function scrapeCityCalendar() {
             category: 'community',
             description: item.description?.slice(0, 400) || null,
             url: item.url || 'https://www.sanmarcostx.gov/calendar.aspx',
-            cost: 'free',
-            kid_friendly: true,
+            cost: null,
+            kid_friendly: null,
             source: 'scraped',
           });
         }
       } catch {}
     }
 
-    // Fallback: extract from HTML event title links
-    if (events.length === 0) {
-      const eventLinks = [...body.matchAll(/href="([^"]*calendar[^"]*)"[^>]*>([^<]{5,80})</gi)];
-      const datePattern = /(\d{1,2})\/(\d{1,2})\/(\d{4})/;
-      for (const [, href, name] of eventLinks.slice(0, 30)) {
-        const dateM = href.match(datePattern) || body.match(datePattern);
-        if (!dateM) continue;
-        const dateStr = `${dateM[3]}-${dateM[1].padStart(2,'0')}-${dateM[2].padStart(2,'0')}`;
-        if (!isUpcoming(dateStr)) continue;
-        events.push({
-          name: name.trim(),
-          date_start: dateStr,
-          venue_name: 'City of San Marcos',
-          venue_address: 'San Marcos, TX 78666',
-          category: 'community',
-          url: href.startsWith('http') ? href : `https://www.sanmarcostx.gov${href}`,
-          cost: 'free',
-          kid_friendly: true,
-          source: 'scraped',
-        });
-      }
-    }
+    if (events.length === 0) events.push(...parseCityCalendar(body).filter(e => isUpcoming(e.date_start)));
+
   } catch (e) {
-    console.error(`[City] Error: ${e.message}`);
+    recordError(`[City] Error: ${e.message}`);
   }
   console.log(`[City] ${events.length} upcoming events`);
   return events;
@@ -252,7 +203,7 @@ async function scrapeTheMarc() {
       });
     }
   } catch (e) {
-    console.error(`[Marc] Error: ${e.message}`);
+    recordError(`[Marc] Error: ${e.message}`);
   }
   console.log(`[Marc] ${events.length} upcoming events`);
   return events;
@@ -294,7 +245,7 @@ async function scrapeEventbrite() {
       });
     }
   } catch (e) {
-    console.error(`[Eventbrite] Error: ${e.message}`);
+    recordError(`[Eventbrite] Error: ${e.message}`);
   }
   console.log(`[Eventbrite] ${events.length} upcoming events`);
   return events;
@@ -332,31 +283,37 @@ async function postEvents(events) {
 }
 
 async function reportRun(started, status, summary, inserted, skipped) {
-  if (!API_KEY) return;
+  if (!API_KEY || DRY_RUN) return;
   const body = JSON.stringify({
     started_at: started,
     finished_at: new Date().toISOString(),
     status,
     error_message: status === 'error' ? summary : null,
-    meta: { inserted, skipped, summary },
+    meta: { inserted, skipped, summary, sources:sourceResults, errors:runErrors },
   });
-  const url = new URL(JOB_REPORT_ENDPOINT);
-  return new Promise((resolve) => {
-    const req = https.request({
-      hostname: url.hostname,
-      path: url.pathname,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-SM-TX-Key': API_KEY,
-        'Content-Length': Buffer.byteLength(body),
-      },
-      timeout: 10000,
-    }, (res) => { res.resume(); resolve(); });
-    req.on('error', () => resolve());
-    req.write(body);
-    req.end();
-  });
+  try { await postReport(JOB_REPORT_ENDPOINT, API_KEY, JSON.parse(body)); }
+  catch (error) { recordError(error.message); }
+}
+
+const detailCache = new Map();
+let detailDeadline = null;
+async function recoverDetails(events) {
+  detailDeadline ||= Date.now() + 90000;
+  for (const event of events) {
+    if (event.time && !genericVenue(event.venue_name)) continue;
+    let url;
+    try { url = new URL(event.url); } catch { continue; }
+    if (!['www.sanmarcostx.gov', 'themarcsm.com', 'www.themarcsm.com', 'www.eventbrite.com'].includes(url.hostname)) continue;
+    if (!detailCache.has(url.href)) {
+      if (detailCache.size >= 12 || Date.now() > detailDeadline) continue;
+      detailCache.set(url.href, []);
+      try {
+        const { body } = await fetchUrl(url.href, { allowedHost: url.hostname });
+        detailCache.set(url.href, schemasFromHtml(body));
+      } catch (error) { console.warn(`[Detail review] ${event.name}: ${error.message}`); }
+    }
+    Object.assign(event, detailBackfill(event, { schemas: detailCache.get(url.href) }));
+  }
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -376,12 +333,13 @@ async function main() {
     ['The Marc', scrapeTheMarc],
     ['Eventbrite', scrapeEventbrite],
   ]) {
-    try {
+    const result = await collectSource(label, async () => {
       const events = await fn();
-      allEvents.push(...events);
-    } catch (e) {
-      console.error(`[${label}] Fatal: ${e.message}`);
-    }
+      // RSS remains authoritative for TXST; HTML details help the other adapters.
+      if (label !== 'TXST') await recoverDetails(events);
+      return events;
+    }, runErrors, sourceResults);
+    allEvents.push(...result.events);
   }
 
   // Deduplicate by name+date
@@ -405,7 +363,7 @@ async function main() {
 
   if (deduped.length === 0) {
     console.log('No events to import.');
-    await reportRun(started, 'success', 'No events found', 0, 0);
+    await reportRun(started, runErrors.length ? 'error' : 'success', runErrors.join('; ') || 'No events found', 0, 0);
     return;
   }
 
@@ -415,25 +373,26 @@ async function main() {
     const batch = deduped.slice(i, i + BATCH);
     try {
       const res = await postEvents(batch);
+      assertImportResponse(res);
       const ins = res.body?.inserted ?? 0;
       const skp = res.body?.skipped ?? 0;
       totalInserted += ins;
       totalSkipped += skp;
       console.log(`Batch ${Math.floor(i/BATCH)+1}: inserted ${ins}, skipped ${skp}`);
     } catch (e) {
-      console.error(`Batch ${Math.floor(i/BATCH)+1} failed: ${e.message}`);
+      recordError(`Batch ${Math.floor(i/BATCH)+1} failed: ${e.message}`);
     }
   }
 
   const summary = `Inserted ${totalInserted}, skipped ${totalSkipped} from ${deduped.length} events across TXST, City, Marc, Eventbrite`;
   console.log(`\nDone. ${summary}`);
 
-  await reportRun(started, 'success', summary, totalInserted, totalSkipped);
-  console.log('Run reported to dashboard.');
+  await reportRun(started, runErrors.length ? 'error' : 'success', [summary,...runErrors].join('; '), totalInserted, totalSkipped);
+  console.log('Collection finished; see source health report.');
 }
 
 main().catch(async (err) => {
-  console.error('Fatal:', err.message);
+  recordError('Fatal:', err.message);
   await reportRun(new Date().toISOString(), 'error', err.message, 0, 0).catch(() => {});
-  process.exit(1);
-});
+  process.exitCode = 1;
+}).finally(() => finishRun(sourceResults, runErrors, DRY_RUN));

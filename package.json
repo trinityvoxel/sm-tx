@@ -1,5 +1,9 @@
 {
-  "dependencies": {
-    "react-helmet-async": "^2.0.5"
+  "dependencies": {},
+  "type": "module",
+  "scripts": {
+    "build": "npm --prefix client run build",
+    "test": "npm --prefix client test",
+    "lint": "npm --prefix client run lint"
   }
 }

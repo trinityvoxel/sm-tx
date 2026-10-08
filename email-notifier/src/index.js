@@ -70,7 +70,7 @@ export default {
       const result = await env.EMAIL.send({
         to: isApproval ? body.to : env.SUBMISSION_ALERT_TO,
         ...(isApproval ? { bcc: env.SUBMISSION_ALERT_TO } : {}),
-        from: { email: env.SUBMISSION_ALERT_FROM, name: 'SM-TX Events' },
+        from: { email: env.SUBMISSION_ALERT_FROM, name: 'SM-TX.com Admin' },
         subject: body.subject.trim(),
         text: body.text,
         html: body.html,

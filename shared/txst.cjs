@@ -68,7 +68,7 @@ function parseTXSTItem(item) {
   let category = "education";
   if (/exhibit|gallery|museum|art show/i.test(topic)) category = "arts";
   else if (
-    /volleyball|football|basketball|baseball|softball|soccer|tennis|golf|athletic|track and field/i.test(
+    /volleyball|football|basketball|baseball|softball|soccer|tennis|golf|athletic|cross country|track and field/i.test(
       topic,
     )
   )

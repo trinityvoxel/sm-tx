@@ -12,6 +12,6 @@ View your event: {{event_url}}
 
 Thanks for helping San Marcos know what's happening.
 
-— SM-TX Events
+— SM-TX.com Admin
 
 You received this operational email because you submitted an event to sm-tx.com.

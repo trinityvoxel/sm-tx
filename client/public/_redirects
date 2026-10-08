@@ -1,1 +1,1 @@
-/* /index.html 200
+# Public HTML and redirects are handled by the Pages Function. No SPA catch-all.

@@ -1,8 +1,14 @@
+import dateTools from '../../shared/event-dates.cjs';
+const { dateIssue } = dateTools;
 /**
  * Cloudflare Pages Functions — /api/* catch-all handler
  * Zero external dependencies. D1 bound as env.DB. API key in env.API_KEY.
  */
 
+import categoryTools from '../../shared/category.cjs';
+const { primaryCategory } = categoryTools;
+import venueTools from '../../shared/venue.cjs';
+const { venueBackfill } = venueTools;
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
@@ -12,7 +18,7 @@ const CORS_HEADERS = {
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' },
   });
 }
 
@@ -50,7 +56,7 @@ function htmlPage(title, emoji, body, color = '#10b981') {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${title} — SM-TX Events</title>
+  <title>${title} — SM-TX.com Admin</title>
   <style>
     body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f9fafb}
     .card{background:#fff;border-radius:12px;padding:2rem 2.5rem;text-align:center;box-shadow:0 2px 20px rgba(0,0,0,.08);max-width:400px;width:90%}
@@ -161,7 +167,7 @@ async function sendEmailSubmission(env, body, id, submittedAt) {
     <html><body style="margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827">
       <div style="max-width:680px;margin:0 auto;padding:24px">
         <div style="background:#ffffff;border-radius:12px;padding:28px;border:1px solid #e5e7eb">
-          <div style="font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#0e7490">SM-TX Events</div>
+          <div style="font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#0e7490">SM-TX.com Admin</div>
           <h1 style="margin:8px 0 10px;font-size:24px;line-height:1.25">New event submission</h1>
           <p style="margin:0 0 18px;color:#4b5563;line-height:1.5">A community submission is waiting for review.</p>
           <table role="presentation" style="width:100%;border-collapse:collapse;font-size:14px;line-height:1.45">${rows}</table>
@@ -180,7 +186,7 @@ async function sendEmailSubmission(env, body, id, submittedAt) {
   // Prefer a native Workers email binding when available. Pages deployments can
   // use the Email Service REST API with a narrowly scoped API token instead.
   if (hasDirectEmailConfig && env.EMAIL && typeof env.EMAIL.send === 'function') {
-    await env.EMAIL.send({ ...message, replyTo: body.submitter_email });
+    await env.EMAIL.send({ ...message, from: { email: env.SUBMISSION_ALERT_FROM, name: 'SM-TX.com Admin' }, replyTo: body.submitter_email });
     return;
   }
 
@@ -269,7 +275,7 @@ View your event: ${eventUrl}
 
 Thanks for helping San Marcos know what's happening.
 
-— SM-TX Events
+— SM-TX.com Admin
 
 You received this operational email because you submitted an event to sm-tx.com.`;
   const html = `<!doctype html>
@@ -294,7 +300,7 @@ You received this operational email because you submitted an event to sm-tx.com.
           </div>
           <a href="${eventUrl}" style="display:inline-block;margin-top:22px;padding:12px 19px;border-radius:8px;background:#0f766e;color:#ffffff;text-decoration:none;font-weight:700">View your event</a>
           <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#6b7280">Thanks for helping San Marcos know what's happening.</p>
-          <p style="margin:8px 0 0;font-size:14px;font-weight:700;color:#374151">— SM-TX Events</p>
+          <p style="margin:8px 0 0;font-size:14px;font-weight:700;color:#374151">— SM-TX.com Admin</p>
         </div>
       </div>
       <p style="margin:14px 0 0;text-align:center;font-size:12px;line-height:1.5;color:#9ca3af">You received this operational email because you submitted an event to sm-tx.com.</p>
@@ -325,7 +331,7 @@ async function sendApprovalEmailMessage(env, submission) {
       },
       body: JSON.stringify({
         sender: {
-          name: 'SM-TX Events',
+          name: 'SM-TX.com Admin',
           email: env.APPROVAL_EMAIL_FROM || 'events@sm-tx.com',
         },
         to: [{
@@ -373,7 +379,7 @@ async function sendApprovalEmailMessage(env, submission) {
     await env.EMAIL.send({
       to: submission.submitter_email,
       bcc: env.SUBMISSION_ALERT_TO,
-      from: { email: env.SUBMISSION_ALERT_FROM, name: 'SM-TX Events' },
+      from: { email: env.SUBMISSION_ALERT_FROM, name: 'SM-TX.com Admin' },
       subject,
       text,
       html,
@@ -527,6 +533,7 @@ async function annotateJobsWithWorkflowState(jobs, env) {
   return Promise.all(jobs.map(async job => {
     const workflow = SCRAPER_WORKFLOW_MAP[job.id];
     if (!workflow) return job;
+    job = { ...job, expected_interval: job.id === 'smtx-event-scraper' ? 'Daily' : 'Tuesday and Friday' };
 
     const workflowState = await getWorkflowState(env, workflow).catch(() => null);
     if (!workflowState) return job;
@@ -645,6 +652,18 @@ export async function onRequest(context) {
       return json(results);
     } catch (e) {
       return err(e.message, 500);
+    }
+  }
+
+  // Private read-only queue. Do not expose raw import evidence publicly.
+  if (method === 'GET' && rest === '/admin/date-reviews') {
+    if (!isAuthed(request, env)) return err('Unauthorized', 401);
+    try {
+      const { results } = await env.DB.prepare('SELECT name,date_start,source_url,reason,evidence,observed_at FROM event_date_reviews ORDER BY date_start DESC LIMIT 500').all();
+      return json(results);
+    } catch (error) {
+      if (/no such table/i.test(error.message)) return err('Date review requires migration 0005.', 503);
+      return err(error.message, 500);
     }
   }
 
@@ -833,6 +852,11 @@ export async function onRequest(context) {
     const id = idMatch[1];
     try {
       const body = await request.json();
+      if ('protect_imports' in body) {
+        if (typeof body.protect_imports !== 'boolean') return err('Invalid import protection', 400);
+        try { await env.DB.prepare('SELECT event_id FROM event_import_protection LIMIT 1').all(); }
+        catch (error) { if (/no such table/i.test(error.message)) return err('Import protection requires migration 0004. No changes saved.', 503); throw error; }
+      }
       const allowed = ['name','date_start','date_end','time','venue_name','venue_address',
         'category','description','url','cost','kid_friendly','pet_friendly','age_21_plus','status','source','image_url'];
       const sets = [];
@@ -850,6 +874,11 @@ export async function onRequest(context) {
       const statements = [
         env.DB.prepare(`UPDATE events SET ${sets.join(', ')} WHERE id = ?`).bind(...vals),
       ];
+      if ('protect_imports' in body) {
+        statements.push(body.protect_imports
+          ? env.DB.prepare('INSERT INTO event_import_protection (event_id,reviewed_at) VALUES (?,?) ON CONFLICT(event_id) DO UPDATE SET reviewed_at=excluded.reviewed_at').bind(id, new Date().toISOString())
+          : env.DB.prepare('DELETE FROM event_import_protection WHERE event_id = ?').bind(id));
+      }
       if (body.status === 'approved' || body.status === 'rejected') {
         statements.push(reviewSubmissionStatement(env, id, body.status, vals[vals.length - 2]));
       }
@@ -915,12 +944,21 @@ export async function onRequest(context) {
       }
 
       for (const evt of body.events) {
-        if (!evt.name || !evt.date_start || !evt.venue_name || !evt.venue_address || !evt.category) {
+        if (!evt.name || !evt.date_start || !evt.venue_name || !evt.category) {
           skipped.push({ reason: 'missing required field', event: evt.name || '(unnamed)' });
           continue;
         }
+        const issue = dateIssue(evt);
+        if (issue) {
+          try {
+            await env.DB.prepare('INSERT OR REPLACE INTO event_date_reviews (name,date_start,source_url,reason,evidence,observed_at) VALUES (?,?,?,?,?,?)')
+              .bind(evt.name, evt.date_start, evt.url || '', issue, JSON.stringify({ source: evt.source, date_evidence: evt.date_evidence, description: evt.description }), now).run();
+          } catch (error) { if (!/no such table/i.test(error.message)) throw error; }
+          skipped.push({ reason: issue, event: evt.name, date: evt.date_start });
+          continue;
+        }
         // Skip past events (use CST date to avoid UTC drift)
-        if (evt.date_start < todayCST()) {
+        if ((/^\d{4}-\d{2}-\d{2}$/.test(evt.date_end || '') ? evt.date_end : evt.date_start) < todayCST()) {
           skipped.push({ reason: 'past event', event: evt.name });
           continue;
         }
@@ -929,6 +967,17 @@ export async function onRequest(context) {
           continue;
         }
 
+        // A one-day-shifted copy must not bypass a reviewed occurrence's protection.
+        let nearbyReviewed;
+        try {
+          nearbyReviewed = await env.DB.prepare(`SELECT e.id FROM events e JOIN event_import_protection p ON p.event_id=e.id
+            WHERE lower(e.name)=lower(?) AND e.url=? AND e.date_start!=? AND abs(julianday(e.date_start)-julianday(?))<=1 LIMIT 1`)
+            .bind(evt.name, evt.url || '', evt.date_start, evt.date_start).first();
+        } catch (error) { if (!/no such table/i.test(error.message)) throw error; }
+        if (nearbyReviewed) {
+          skipped.push({ reason: 'Possible date-shifted duplicate of reviewed occurrence; manual review required', event: evt.name, date: evt.date_start });
+          continue;
+        }
         const normName = normalizeName(evt.name);
         const date = evt.date_start;
         const venue = (evt.venue_name || '').toLowerCase().trim();
@@ -946,9 +995,39 @@ export async function onRequest(context) {
           existing = (results || []).find(row => normalizeName(row.name) === normName);
         }
 
+        // Trumba's RSS category is the occurrence start; legacy imports sometimes
+        // stored the closing date. Only match a unique same-source series record.
+        if (!existing && evt.source_provider === 'txst_rss' && /^https:\/\/events\.txstate\.edu\//.test(evt.url || '') && evt.date_end) {
+          const { results } = await env.DB.prepare("SELECT * FROM events WHERE source = 'scraped' AND url = ? AND name = ? AND date_start = ?").bind(evt.url, evt.name, evt.date_end).all();
+          if (results.length === 1) existing = results[0];
+        }
+
         const newSource = evt.source || 'scraped';
+        const titleCategory = newSource === 'scraped' ? primaryCategory(evt.name) : null;
+        if (titleCategory) evt.category = titleCategory;
 
         if (existing) {
+          let protectedRecord;
+          try { protectedRecord = await env.DB.prepare('SELECT event_id FROM event_import_protection WHERE event_id = ?').bind(existing.id).first(); }
+          catch (error) { if (!/no such table/i.test(error.message)) throw error; }
+          if (protectedRecord) { skipped.push({ reason: 'editor-reviewed record protected', event: evt.name }); continue; }
+          if (evt.source_provider === 'txst_rss' && existing.source === 'scraped' && newSource === 'scraped' && existing.url === evt.url && /^https:\/\/events\.txstate\.edu\//.test(evt.url || '')) {
+            await env.DB.prepare('UPDATE events SET date_start=?, date_end=?, time=?, venue_name=?, venue_address=?, category=?, cost=?, kid_friendly=?, updated_at=? WHERE id=?')
+              .bind(evt.date_start, evt.date_end || null, evt.time || null, evt.venue_name, evt.venue_address || "", evt.category, evt.cost || "Check official source", evt.kid_friendly ? 1 : 0, now, existing.id).run();
+            skipped.push({ reason: 'refreshed authoritative TXST fields in place', event: evt.name });
+            continue;
+          }
+          if (titleCategory && existing.source === 'scraped' && existing.category !== titleCategory) {
+            await env.DB.prepare('UPDATE events SET category = ?, updated_at = ? WHERE id = ?').bind(titleCategory, now, existing.id).run();
+          }
+          const venue = venueBackfill(existing, { ...evt, source: newSource });
+          if (venue) {
+            await env.DB.prepare('UPDATE events SET venue_name = ?, venue_address = ?, updated_at = ? WHERE id = ?')
+              .bind(venue.venue_name, venue.venue_address || existing.venue_address, now, existing.id).run();
+          }
+          if (!existing.time && evt.time && existing.source === 'scraped' && newSource === 'scraped') {
+            await env.DB.prepare('UPDATE events SET time = ?, updated_at = ? WHERE id = ?').bind(evt.time, now, existing.id).run();
+          }
           const existingPriority = sourcePriority(existing.source);
           const incomingPriority = sourcePriority(newSource);
           if (incomingPriority <= existingPriority) {
@@ -1000,8 +1079,8 @@ export async function onRequest(context) {
         `).bind(
           id, newSource, 'approved',
           evt.name, evt.date_start, evt.date_end || null, evt.time || null,
-          evt.venue_name, evt.venue_address, evt.category,
-          evt.description || null, evt.url || null, evt.cost || 'free',
+          evt.venue_name, evt.venue_address || "", evt.category,
+          evt.description || null, evt.url || null, evt.cost || 'Check official source',
           evt.kid_friendly ? 1 : 0, evt.pet_friendly ? 1 : 0, evt.age_21_plus ? 1 : 0,
           evt.image_url || null, null, null,
           now, now

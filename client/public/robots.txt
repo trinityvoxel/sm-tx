@@ -1,11 +1,15 @@
 User-agent: *
 Allow: /
-Allow: /calendar
-Allow: /guides/
-Allow: /events/
-
 Disallow: /api/
-Disallow: /admin
-Disallow: /submit
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /api/
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
 
 Sitemap: https://sm-tx.com/sitemap.xml

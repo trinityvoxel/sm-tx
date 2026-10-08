@@ -1,1 +1,30 @@
-{"name":"sm-tx-client","version":"1.0.0","scripts":{"dev":"vite","build":"vite build","preview":"vite preview"},"dependencies":{"react":"^18.2.0","react-dom":"^18.2.0","react-helmet-async":"^2.0.5","react-router-dom":"^6.20.0"},"devDependencies":{"@vitejs/plugin-react":"^4.2.0","vite":"^5.0.0"}}
+{
+  "name": "sm-tx-client",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "npm run build && node ../scripts/preview.mjs",
+    "build": "node ../scripts/build.mjs",
+    "preview": "node ../scripts/preview.mjs",
+    "test": "node --test ../tests/*.test.mjs",
+    "lint": "eslint ../client/src ../server ../functions ../tests",
+    "format:check": "prettier --check src ../server ../tests ../functions/api/contact.js ../functions/api/editorial.js ../scripts/build.mjs"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "sanitize-html": "^2.17.7"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.0",
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.9",
+    "sharp": "^0.35.4",
+    "vite": "^5.0.0",
+    "wrangler": "^4.137.0"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}

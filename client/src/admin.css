@@ -1,0 +1,59 @@
+/* Keep the administration utility separate from the editorial public surface. */
+.admin-surface {
+  font-family: Arial, Helvetica, sans-serif;
+  max-width: 1400px;
+  margin: auto;
+  padding: 24px 16px;
+  overflow-wrap: anywhere;
+}
+.admin-surface h1,
+.admin-surface h2,
+.admin-surface h3 {
+  font-family: Arial, Helvetica, sans-serif;
+  letter-spacing: normal;
+}
+.admin-surface h1 {
+  font-size: 2rem;
+}
+.admin-surface h2 {
+  font-size: 1.4rem;
+}
+.admin-surface h3 {
+  font-size: 1.1rem;
+}
+.admin-surface table {
+  font-size: 0.85rem;
+}
+.admin-surface input[type="checkbox"] {
+  width: auto;
+}
+.admin-surface button {
+  min-height: 44px;
+}
+.admin-surface label {
+  font-weight: 400;
+}
+.admin-surface [style*="overflow"] {
+  max-width: 100%;
+}
+.editorial-admin {
+  border: 1px solid #d6ddd3;
+  padding: 24px;
+  margin: 24px 0;
+  border-radius: 8px;
+  background: #fff;
+}
+.editorial-admin label {
+  margin-top: 16px;
+}
+.editorial-admin button {
+  margin-top: 16px;
+}
+.admin-surface input:focus-visible {
+  outline: 3px solid #ae6825 !important;
+  outline-offset: 3px;
+}
+.admin-surface [style*="color: rgb(255"],
+.admin-surface [style*="color: #fff"] {
+  color: inherit;
+}
