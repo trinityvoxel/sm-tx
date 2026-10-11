@@ -15,6 +15,7 @@ function instantDate(value) {
 function dateIssue(event) {
   const date = calendarDate(event.date_start);
   if (!date) return 'Invalid calendar date';
+  if (String(event.url || '').split(/[?#]/)[0] === 'https://www.tantrasanmarcos.com/event-info/bluegrass-night-2024-06-12-19-30' && date !== '2024-06-12') return 'Source is a dated June 12, 2024 event page; a current occurrence source is required';
   const titleMatch = String(event.name || '').match(/\b(first|second|third|fourth|fifth|last)\s+(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\b/i);
   const descriptionMatch = String(event.description || '').match(/\b(?:every|each)\s+((?:first|second|third|fourth|fifth|last)\s+(?:Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday))\b/i);
   const match = titleMatch || (descriptionMatch && descriptionMatch[1].match(/(first|second|third|fourth|fifth|last)\s+(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)/i));

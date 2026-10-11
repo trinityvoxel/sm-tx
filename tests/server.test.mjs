@@ -560,3 +560,13 @@ test('a shifted date cannot bypass protection on a reviewed occurrence', async (
  assert.match((await response.json()).details.skipped[0].reason,/date-shifted duplicate/);
  assert.equal(DB.sql.prepare('SELECT COUNT(*) AS n FROM events').get().n,1);
 });
+test('changed promotional title with the same provider occurrence updates instead of inserting', async () => {
+ const DB=database(),env={DB,API_KEY:'local-test-key'};
+ const event={...sample,source:'scraped',date_end:null,name:'Texas State Volleyball vs Gonzaga',url:'https://events.txstate.edu/?trumbaEmbed=view%3Devent%26eventid%3D204331505'};
+ const send=e=>api(ctx(req('/api/admin/import','POST',{events:[e]},{'X-SM-TX-Key':env.API_KEY}),env));
+ assert.equal((await send(event)).status,201);
+ const original=DB.sql.prepare('SELECT id FROM events').get().id;
+ assert.equal((await send({...event,name:event.name+' - Faculty Appreciation & Dig Pink!',venue_name:'Strahan Arena'})).status,201);
+ assert.equal(DB.sql.prepare('SELECT count(*) n FROM events').get().n,1);
+ assert.equal(DB.sql.prepare('SELECT id FROM events').get().id,original);
+});

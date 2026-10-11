@@ -1,3 +1,4 @@
+import Link from "./Link.jsx";
 import React, { useEffect, useRef, useState } from "react";
 import { LABELS } from "../lib/events.js";
 
@@ -31,14 +32,14 @@ export default function CategoryNav({ model }) {
         aria-hidden={compact}
       >
         {categories.map(([id, label]) => (
-          <a
+          <Link
             key={id}
             href={destination(id)}
             tabIndex={compact ? -1 : undefined}
             aria-current={model.filters.category === id ? "page" : undefined}
           >
             {label}
-          </a>
+          </Link>
         ))}
       </nav>
       {compact && (

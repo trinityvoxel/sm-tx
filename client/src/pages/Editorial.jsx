@@ -1,3 +1,4 @@
+import Link from "../components/Link.jsx";
 import React from "react";
 import { guides } from "../data/guides.js";
 import {
@@ -29,7 +30,7 @@ export default function Editorial({ model: m }) {
             <ol>
               {g.sections.map((s, i) => (
                 <li key={s.title}>
-                  <a href={"#section-" + i}>{s.title}</a>
+                  <Link href={"#section-" + i}>{s.title}</Link>
                 </li>
               ))}
             </ol>
@@ -41,7 +42,7 @@ export default function Editorial({ model: m }) {
               <ul className="source-links">
                 {s.links.map(([label, url]) => (
                   <li key={url}>
-                    <a
+                    <Link
                       href={url}
                       rel={
                         url.startsWith("https://www.cohostr.com")
@@ -50,7 +51,7 @@ export default function Editorial({ model: m }) {
                       }
                     >
                       {label} <Arrow />
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -61,8 +62,8 @@ export default function Editorial({ model: m }) {
             <p>
               Published by SM-TX.com. Source links appear alongside each
               recommendation. Hours, access, menus, and schedules can change.{" "}
-              <a href="/contact">Suggest a correction</a> or read our{" "}
-              <a href="/editorial-policy">editorial policy</a>.
+              <Link href="/contact">Suggest a correction</Link> or read our{" "}
+              <Link href="/editorial-policy">editorial policy</Link>.
             </p>
           </section>
         </article>
@@ -72,12 +73,12 @@ export default function Editorial({ model: m }) {
             {guides
               .filter((x) => x !== g)
               .map((x) => (
-                <a className="guide-card" key={x.path} href={x.path}>
+                <Link className="guide-card" key={x.path} href={x.path}>
                   <h3>{x.title}</h3>
                   <span>
                     Read the guide <Arrow />
                   </span>
-                </a>
+                </Link>
               ))}
           </div>
         </section>
@@ -95,14 +96,14 @@ export default function Editorial({ model: m }) {
         </PageTitle>
         <div className="guide-grid">
           {guides.map((g, i) => (
-            <a className="guide-card" href={g.path} key={g.path}>
+            <Link className="guide-card" href={g.path} key={g.path}>
               <span className="guide-number">0{i + 1}</span>
               <h2>{g.title}</h2>
               <p>{g.intro}</p>
               <span>
                 Read the guide <Arrow />
               </span>
-            </a>
+            </Link>
           ))}
         </div>
         <Lodging />
@@ -139,8 +140,8 @@ export default function Editorial({ model: m }) {
           <h2>Start with the event, then plan the stay.</h2>
           <p>
             Confirm the event’s dates and admission details before booking
-            lodging. Our <a href="/events/this-weekend">weekend calendar</a> and{" "}
-            <a href="/guides/hill-country-weekend">weekend planning guide</a>{" "}
+            lodging. Our <Link href="/events/this-weekend">weekend calendar</Link> and{" "}
+            <Link href="/guides/hill-country-weekend">weekend planning guide</Link>{" "}
             can help you put the trip together.
           </p>
           <h2>A clear connection</h2>
@@ -166,9 +167,9 @@ export default function Editorial({ model: m }) {
           </p>
           <h2>Find something worth going out for.</h2>
           <p>
-            Start with <a href="/events/today">today’s events</a>, plan{" "}
-            <a href="/events/this-weekend">this weekend</a>, or use the{" "}
-            <a href="/calendar">calendar</a>. Listings link back to an official
+            Start with <Link href="/events/today">today’s events</Link>, plan{" "}
+            <Link href="/events/this-weekend">this weekend</Link>, or use the{" "}
+            <Link href="/calendar">calendar</Link>. Listings link back to an official
             source whenever one is available.
           </p>
           <h2>Who publishes this site?</h2>
@@ -179,10 +180,10 @@ export default function Editorial({ model: m }) {
             placements are identified and kept secondary to event discovery.
           </p>
           <p>
-            <a href="/editorial-policy">
+            <Link href="/editorial-policy">
               How we handle listings and corrections
-            </a>{" "}
-            · <a href="/contact">Contact SM-TX.com Admin</a>
+            </Link>{" "}
+            · <Link href="/contact">Contact SM-TX.com Admin</Link>
           </p>
         </>
       ) : (
@@ -214,7 +215,7 @@ export default function Editorial({ model: m }) {
           </p>
           <h2>Corrections and changes</h2>
           <p>
-            <a href="/contact">Send a correction</a> with the event link, the
+            <Link href="/contact">Send a correction</Link> with the event link, the
             detail that needs changing, and an official source where possible.
             Corrections are reviewed before changes are published. Canceled,
             postponed, and past events should be clearly distinguished from

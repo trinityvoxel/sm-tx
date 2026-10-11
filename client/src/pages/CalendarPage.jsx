@@ -1,3 +1,4 @@
+import Link from "../components/Link.jsx";
 import React from "react";
 import { PageTitle, Arrow } from "../components/UI.jsx";
 import { formatDate, addDays } from "../lib/dates.js";
@@ -19,12 +20,12 @@ export default function CalendarPage({ model: m }) {
         </p>
       </PageTitle>
       <nav className="calendar-nav" aria-label="Calendar month">
-        <a
+        <Link
           className="button secondary"
           href={"/calendar?month=" + m.previousMonth}
         >
           Previous month
-        </a>
+        </Link>
         <h2>
           {formatDate(m.range.from, {
             month: "long",
@@ -32,10 +33,10 @@ export default function CalendarPage({ model: m }) {
             day: undefined,
           })}
         </h2>
-        <a className="button secondary" href={"/calendar?month=" + m.nextMonth}>
+        <Link className="button secondary" href={"/calendar?month=" + m.nextMonth}>
           Next month
-        </a>
-        <a href="/calendar">Current month</a>
+        </Link>
+        <Link href="/calendar">Current month</Link>
       </nav>
       <div className="month-grid" aria-label="Dates with event listings">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
@@ -63,9 +64,9 @@ export default function CalendarPage({ model: m }) {
                 {date === m.today && <small>Today</small>}
               </span>
               {count > 0 && (
-                <a href={"/events?date=" + date}>
+                <Link href={"/events?date=" + date}>
                   {count} {count === 1 ? "event" : "events"} <Arrow />
-                </a>
+                </Link>
               )}
             </div>
           );
@@ -76,7 +77,7 @@ export default function CalendarPage({ model: m }) {
         {!m.events.length ? (
           <p className="empty">
             No events are listed for this month yet.{" "}
-            <a href="/events">Browse upcoming events.</a>
+            <Link href="/events">Browse upcoming events.</Link>
           </p>
         ) : (
           Object.entries(groups).map(([date, events]) => (
@@ -90,7 +91,7 @@ export default function CalendarPage({ model: m }) {
                 {events.map((e) => (
                   <li key={e.id}>
                     <div>
-                      <a href={e.path}>{e.name}</a>
+                      <Link href={e.path}>{e.name}</Link>
                       <p>
                         {e.venue_name}
                         {e.date_end && e.date_end !== date

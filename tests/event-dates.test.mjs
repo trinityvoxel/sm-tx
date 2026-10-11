@@ -28,3 +28,7 @@ test('ordinal recurrence in a source description catches weekday and week-number
  assert.equal(dates.dateIssue({...e,date_start:'2026-10-17'}),null);
  assert.equal(dates.dateIssue({name:'Show',description:'We enjoyed last Saturday.',date_start:'2026-10-18'}),null);
 });
+test('expired Tantra detail page cannot justify newly generated weekly occurrences',()=>{
+ assert.match(dates.dateIssue({name:'Tantra Bluegrass Night',date_start:'2026-10-15',url:'https://www.tantrasanmarcos.com/event-info/bluegrass-night-2024-06-12-19-30'}),/2024/);
+ assert.equal(dates.dateIssue({name:'Tantra: Bluegrass Night',date_start:'2026-10-07',url:'https://www.visitsanmarcos.com/listen-san-marcos/live-this-week/'}),null);
+});

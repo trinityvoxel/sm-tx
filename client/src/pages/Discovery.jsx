@@ -1,3 +1,4 @@
+import Link from "../components/Link.jsx";
 import React from "react";
 import {
   PageTitle,
@@ -32,12 +33,12 @@ export default function Discovery({ model: m }) {
             <h1>What’s happening in San Marcos</h1>
             <p>Music, markets, sports, and more.</p>
             <div className="actions">
-              <a className="button secondary" href="/events/today">
+              <Link className="button secondary" href="/events/today">
                 Today
-              </a>
-              <a className="button secondary" href="/events/this-weekend">
+              </Link>
+              <Link className="button secondary" href="/events/this-weekend">
                 This weekend
-              </a>
+              </Link>
             </div>
           </div>
           <BookingRibbon />
@@ -60,34 +61,34 @@ export default function Discovery({ model: m }) {
         </h2>
         <div className="event-toolbar">
           <CategoryNav model={m} />
-          <a className="calendar-control" href="/calendar">
+          <Link className="calendar-control" href="/calendar">
             <CalendarIcon />
             Calendar View
-          </a>
+          </Link>
         </div>
         {m.path !== "/" && (
           <>
             <nav className="shortcuts" aria-label="Choose event dates">
-              <a
+              <Link
                 href="/events"
                 aria-current={m.path === "/events" ? "page" : undefined}
               >
                 Upcoming
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/events/today"
                 aria-current={m.path === "/events/today" ? "page" : undefined}
               >
                 Today
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/events/this-weekend"
                 aria-current={
                   m.path === "/events/this-weekend" ? "page" : undefined
                 }
               >
                 This weekend
-              </a>
+              </Link>
             </nav>
             <form
               className="filters"
@@ -141,7 +142,7 @@ export default function Discovery({ model: m }) {
           {m.filters.q ? " matching “" + m.filters.q + "”" : ""}
           {m.filtered ? " · Filters applied" : ""}.{" "}
           {m.filtered && (
-            <a href={m.path === "/" ? "/events" : m.path}>Clear filters</a>
+            <Link href={m.path === "/" ? "/events" : m.path}>Clear filters</Link>
           )}
           <span>Details can change. Confirm with the official source.</span>
         </p>
@@ -149,25 +150,25 @@ export default function Discovery({ model: m }) {
         {m.pages > 1 && m.path !== "/" && (
           <nav className="pagination" aria-label="Event result pages">
             {m.page > 1 && (
-              <a className="button secondary" href={m.pageLink(m.page - 1)}>
+              <Link className="button secondary" href={m.pageLink(m.page - 1)}>
                 Previous
-              </a>
+              </Link>
             )}
             <span>
               Page {m.page} of {m.pages}
             </span>
             {m.page < m.pages && (
-              <a className="button secondary" href={m.pageLink(m.page + 1)}>
+              <Link className="button secondary" href={m.pageLink(m.page + 1)}>
                 Next
-              </a>
+              </Link>
             )}
           </nav>
         )}
         {m.path === "/" && m.total > 9 && (
           <p className="center">
-            <a className="button secondary" href="/events">
+            <Link className="button secondary" href="/events">
               See all upcoming events <Arrow />
-            </a>
+            </Link>
           </p>
         )}
       </section>
@@ -180,20 +181,20 @@ export default function Discovery({ model: m }) {
                 <p className="eyebrow">A little local direction</p>
                 <h2>More than a date on the calendar.</h2>
               </div>
-              <a href="/guides">
+              <Link href="/guides">
                 Explore the guides <Arrow />
-              </a>
+              </Link>
             </div>
             <div className="guide-grid">
               {guides.slice(0, 3).map((g, i) => (
-                <a className="guide-card" href={g.path} key={g.path}>
+                <Link className="guide-card" href={g.path} key={g.path}>
                   <span className="guide-number">0{i + 1}</span>
                   <h3>{g.title}</h3>
                   <p>{g.intro}</p>
                   <span>
                     Read the guide <Arrow />
                   </span>
-                </a>
+                </Link>
               ))}
             </div>
           </section>

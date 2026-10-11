@@ -1,3 +1,4 @@
+import Link from "../components/Link.jsx";
 import React, { useState, useRef } from "react";
 import { PageTitle } from "../components/UI.jsx";
 import { trackEvent } from "../analytics.js";
@@ -105,7 +106,7 @@ export default function Forms({ contact = false, eventId = "" }) {
                 ? "Thank you for helping keep SM-TX.com useful."
                 : "The listing is awaiting review. Your contact information will not appear on the event page."}
             </p>
-            <a href="/events">Browse upcoming events</a>
+            <Link href="/events">Browse upcoming events</Link>
           </div>
         ) : (
           <form onSubmit={send} className="submission-form">
@@ -276,7 +277,7 @@ export default function Forms({ contact = false, eventId = "" }) {
             <p className="small">
               Please send only information needed to handle this{" "}
               {contact ? "message" : "listing"}.{" "}
-              <a href="/editorial-policy">Editorial and privacy information</a>.
+              <Link href="/editorial-policy">Editorial and privacy information</Link>.
             </p>
             <button type="submit" disabled={busy}>
               {busy

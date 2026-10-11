@@ -1,3 +1,4 @@
+import Link from "../components/Link.jsx";
 import React, { useState } from "react";
 import {
   Breadcrumbs,
@@ -34,7 +35,7 @@ export default function EventPage({ model: m }) {
           {m.expired && (
             <p className="notice">
               This event has ended. These details are kept for reference.{" "}
-              <a href="/events">Find upcoming events.</a>
+              <Link href="/events">Find upcoming events.</Link>
             </p>
           )}
           {e.occurrenceStatus && (
@@ -89,9 +90,9 @@ export default function EventPage({ model: m }) {
                 <dt>Organizer</dt>
                 <dd>
                   {e.editorial.organizer_url ? (
-                    <a href={e.editorial.organizer_url}>
+                    <Link href={e.editorial.organizer_url}>
                       {e.editorial.organizer_name}
-                    </a>
+                    </Link>
                   ) : (
                     e.editorial.organizer_name
                   )}
@@ -121,7 +122,7 @@ export default function EventPage({ model: m }) {
           </dl>
           <div className="actions">
             {e.url && (
-              <a
+              <Link
                 className="button"
                 href={e.url}
                 rel="noopener noreferrer"
@@ -130,12 +131,12 @@ export default function EventPage({ model: m }) {
                 }
               >
                 Official event page <Arrow />
-              </a>
+              </Link>
             )}
             {!m.expired && (
-              <a className="button secondary" href={`${e.path}/calendar.ics`}>
+              <Link className="button secondary" href={`${e.path}/calendar.ics`}>
                 Add to calendar
-              </a>
+              </Link>
             )}
             <button className="text-button" onClick={share}>
               Share event
@@ -185,10 +186,10 @@ export default function EventPage({ model: m }) {
               </p>
             )}
             <p>
-              <a href={`/contact?event=${encodeURIComponent(e.id)}`}>
+              <Link href={`/contact?event=${encodeURIComponent(e.id)}`}>
                 Suggest a correction
-              </a>{" "}
-              · <a href="/editorial-policy">How listings work</a>
+              </Link>{" "}
+              · <Link href="/editorial-policy">How listings work</Link>
             </p>
           </section>
         </article>
@@ -213,15 +214,15 @@ export default function EventPage({ model: m }) {
           </div>
           <div className="aside-links">
             <h2>Keep exploring</h2>
-            <a href={"/events?category=" + encodeURIComponent(e.category)}>
+            <Link href={"/events?category=" + encodeURIComponent(e.category)}>
               {e.categoryLabel} events <Arrow />
-            </a>
-            <a href="/events/this-weekend">
+            </Link>
+            <Link href="/events/this-weekend">
               This weekend <Arrow />
-            </a>
-            <a href="/guides/things-to-do">
+            </Link>
+            <Link href="/guides/things-to-do">
               Plan your San Marcos visit <Arrow />
-            </a>
+            </Link>
           </div>
         </aside>
       </div>
@@ -229,9 +230,9 @@ export default function EventPage({ model: m }) {
         <section>
           <div className="section-heading">
             <h2>More upcoming events</h2>
-            <a href="/events">
+            <Link href="/events">
               View all <Arrow />
-            </a>
+            </Link>
           </div>
           <EventList events={m.related} />
         </section>

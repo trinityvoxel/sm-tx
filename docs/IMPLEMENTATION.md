@@ -83,3 +83,6 @@ Schedule extraction now takes the start of explicit time ranges, refuses ambiguo
 Content reconciliation: every one of 3,310 IDs in the saved production snapshot remains in the local database (3,311 total, including a pre-existing local test record). Of those local records, 1,710 have no time. The local event_sources and jobs tables are empty; they are not evidence that production sources are absent. The existing scheduled workflow files were retained unchanged. A complete production source health reconciliation still requires authorized read access to source/job settings and recent runs.
 
 Live email delivery, production bot/WAF policy, Search Console/Bing account verification and mobile visual QA remain launch checks. Browser process launch was unavailable in this execution environment; the in-app browser loaded the new homepage and its real event data. No production writes or deployments have been made.
+
+## Permanent external-link policy
+All off-domain HTTP(S) links open a new tab with noopener/noreferrer, including booking, organizer, official-event, admin-source and imported-description links. Use the shared Link component; lint disallows raw JSX anchors elsewhere. Relative and SM-TX.com links remain internal. Preserve sponsored attributes and click analytics.

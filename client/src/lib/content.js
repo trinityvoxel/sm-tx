@@ -1,15 +1,16 @@
+import { linkProps } from "./links.js";
 import sanitizeHtml from "sanitize-html";
 export function cleanHtml(value) {
   return sanitizeHtml(String(value || ""), {
     allowedTags: ["p", "br", "ul", "ol", "li", "strong", "b", "em", "i", "a"],
-    allowedAttributes: { a: ["href"] },
+    allowedAttributes: { a: ["href", "target", "rel"] },
     allowedSchemes: ["https", "http"],
     allowProtocolRelative: false,
     transformTags: {
       a: (tagName, attribs) => ({
         tagName,
         attribs: safeUrl(attribs.href)
-          ? { href: attribs.href, rel: "noopener noreferrer" }
+          ? { href: attribs.href, ...linkProps(attribs.href) }
           : {},
       }),
     },

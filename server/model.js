@@ -22,14 +22,19 @@ import {
 import { guides, staticPaths } from "../client/src/data/guides.js";
 const PUBLIC_FIELDS =
   "id,source,status,name,date_start,date_end,time,venue_name,venue_address,category,description,url,cost,kid_friendly,pet_friendly,age_21_plus,image_url,image_override,created_at,updated_at";
-export async function readEvents(db, where = "1=1", bindings = []) {
-  const { results } = await db
+export async function readEvents(db, where = "1=1", bindings = [], index = "") {
+  let response;
+  try { response = await db
     .prepare(
-      `SELECT ${PUBLIC_FIELDS} FROM events WHERE status = 'approved' AND (${where}) ORDER BY date_start,time,id`,
+      `SELECT ${PUBLIC_FIELDS} FROM events ${index ? 'INDEXED BY '+index : ''} WHERE status = 'approved' AND (${where}) ORDER BY date_start,time,id`,
     )
     .bind(...bindings)
     .all();
-  return results || [];
+  } catch(error) {
+    if(index && /no such index/i.test(error.message))return readEvents(db,where,bindings);
+    throw error;
+  }
+  return response.results || [];
 }
 export function publicEvent(e) {
   return {
@@ -70,7 +75,13 @@ export function publicEvent(e) {
 }
 export async function attachEditorial(db, events) {
   try {
-    const { results } = await db.prepare("SELECT * FROM event_editorial").all();
+    if (!events.length) return [];
+    const results=[];
+    for(let i=0;i<events.length;i+=80){
+      const ids=events.slice(i,i+80).map(e=>e.id);
+      const batch=await db.prepare(`SELECT * FROM event_editorial WHERE event_id IN (${ids.map(()=>'?').join(',')})`).bind(...ids).all();
+      results.push(...batch.results);
+    }
     const byId = new Map(results.map((e) => [e.event_id, e]));
     return events.map((e) => ({ ...e, editorial: byId.get(e.id) }));
   } catch (error) {
@@ -152,6 +163,7 @@ export async function loadModel(url, env, now = new Date()) {
         env.DB,
         "date_start <= ? AND COALESCE(NULLIF(date_end,''),date_start) >= ?",
         [range.to, range.from],
+        "idx_events_effective_end",
       ),
     );
     raw = raw.filter((e) => validDate(e.date_start) && isListed(e));
@@ -242,18 +254,19 @@ export async function loadModel(url, env, now = new Date()) {
       await readEvents(env.DB, "id = ?", [id]),
     );
     if (!e || !validDate(e.date_start)) return notFound(m);
-    const related = sortEvents(
-      (
-        await attachEditorial(
-          env.DB,
-          await readEvents(
-            env.DB,
-            "date_start >= ? AND date_start <= ? AND id != ?",
-            [day, addDays(day, 90), id],
-          ),
-        )
-      ).filter(isListed),
-    ).slice(0, 3);
+    // Read only the earliest day(s) needed for three related events, rather
+    // than every event in the next 90 days. Sort complete days in JS so mixed
+    // source clock formats retain the existing chronological behavior.
+    const related=[];
+    let cursor=day;
+    const through=addDays(day,90);
+    while(related.length<3 && cursor<=through){
+      const next=await env.DB.prepare("SELECT MIN(date_start) AS day FROM events WHERE status='approved' AND date_start>=? AND date_start<=? AND id!=?").bind(cursor,through,id).first();
+      if(!next?.day || !validDate(next.day))break;
+      const candidates=await attachEditorial(env.DB,await readEvents(env.DB,"date_start=? AND id!=?",[next.day,id]));
+      related.push(...sortEvents(candidates.filter(isListed)).slice(0,3-related.length));
+      cursor=addDays(next.day,1);
+    }
     return {
       ...m,
       kind: "event",

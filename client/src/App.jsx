@@ -1,3 +1,4 @@
+import Link from "./components/Link.jsx";
 import React, { useEffect, useState, lazy, Suspense } from "react";
 import Discovery from "./pages/Discovery.jsx";
 import EventPage from "./pages/EventPage.jsx";
@@ -20,7 +21,7 @@ function AdminSurface() {
 }
 function Logo() {
   return (
-    <a className="logo" href="/" aria-label="SM-TX.com home">
+    <Link className="logo" href="/" aria-label="SM-TX.com home">
       <svg viewBox="0 0 44 32" width="44" height="32" aria-hidden="true">
         <path
           d="M1 9Q11-1 22 9T43 9M1 18Q11 8 22 18T43 18M1 27Q11 17 22 27T43 27"
@@ -32,7 +33,7 @@ function Logo() {
       <span>
         SM-TX<span className="logo-dot">.com</span>
       </span>
-    </a>
+    </Link>
   );
 }
 export default function App({ model: m }) {
@@ -76,28 +77,28 @@ export default function App({ model: m }) {
       <div className="error-page">
         <PageTitle title={m.heading} />
         <p>{m.description}</p>
-        <a className="button" href="/events">
+        <Link className="button" href="/events">
           Browse events
-        </a>
+        </Link>
       </div>
     );
   return (
     <div
       className={admin ? "site-shell admin-shell" : "site-shell public-shell"}
     >
-      <a className="skip-link" href="#main">
+      <Link className="skip-link" href="#main">
         Skip to content
-      </a>
+      </Link>
       <header className="site-header">
         <div className="header-inner">
           <Logo />
           {admin ? (
-            <a href="/">Return to public site</a>
+            <Link href="/">Return to public site</Link>
           ) : (
             <>
               <nav className="desktop-nav" aria-label="Main navigation">
                 {links.map(([label, path]) => (
-                  <a
+                  <Link
                     key={path}
                     href={path}
                     aria-current={
@@ -108,18 +109,18 @@ export default function App({ model: m }) {
                     }
                   >
                     {label}
-                  </a>
+                  </Link>
                 ))}
-                <a className="submit-link" href="/submit">
+                <Link className="submit-link" href="/submit">
                   Submit an event
-                </a>
+                </Link>
               </nav>
               <details className="mobile-nav">
                 <summary>Menu</summary>
                 <nav aria-label="Mobile navigation">
                   {[...links, ["Submit an event", "/submit"]].map(
                     ([label, path]) => (
-                      <a
+                      <Link
                         key={path}
                         href={path}
                         aria-current={
@@ -127,7 +128,7 @@ export default function App({ model: m }) {
                         }
                       >
                         {label}
-                      </a>
+                      </Link>
                     ),
                   )}
                 </nav>
@@ -156,17 +157,17 @@ export default function App({ model: m }) {
             </div>
             <nav aria-label="Explore">
               <h2>Explore</h2>
-              <a href="/events/today">Today’s events</a>
-              <a href="/events/this-weekend">This weekend</a>
-              <a href="/guides">San Marcos guides</a>
-              <a href="/submit">Submit an event</a>
+              <Link href="/events/today">Today’s events</Link>
+              <Link href="/events/this-weekend">This weekend</Link>
+              <Link href="/guides">San Marcos guides</Link>
+              <Link href="/submit">Submit an event</Link>
             </nav>
             <nav aria-label="About the site">
               <h2>SM-TX.com</h2>
-              <a href="/about">About</a>
-              <a href="/editorial-policy">Editorial policy</a>
-              <a href="/contact">Contact & corrections</a>
-              <a href="/stay">Riverbend Hideaway</a>
+              <Link href="/about">About</Link>
+              <Link href="/editorial-policy">Editorial policy</Link>
+              <Link href="/contact">Contact & corrections</Link>
+              <Link href="/stay">Riverbend Hideaway</Link>
             </nav>
             <p className="footer-bottom">
               Independent local listings · Confirm event details with the

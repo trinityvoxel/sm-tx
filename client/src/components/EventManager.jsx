@@ -1,3 +1,4 @@
+import Link from "./Link.jsx";
 import { sortEvents } from "../lib/events.js";
 import React, { useEffect, useState } from "react";
 export default function EventManager({ apiKey }) {
@@ -148,9 +149,9 @@ export default function EventManager({ apiKey }) {
             </select></label>
             <p>Approve scraped events only after checking the actual occurrence with its source. Use Pending Events below for community submissions and their notification workflow. Keep import protection on for reviewed exceptions.</p>
             {/^https?:\/\//i.test(selected.url || "") && (
-              <a href={selected.url} target="_blank" rel="noreferrer">
+              <Link href={selected.url} target="_blank" rel="noreferrer">
                 Check official event details
-              </a>
+              </Link>
             )}
             <label className="checkbox">
               <input

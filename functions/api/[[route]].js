@@ -1,3 +1,5 @@
+import identityTools from '../../shared/event-identity.cjs';
+const { occurrenceMatch } = identityTools;
 import dateTools from '../../shared/event-dates.cjs';
 const { dateIssue } = dateTools;
 /**
@@ -993,6 +995,17 @@ export async function onRequest(context) {
             'SELECT * FROM events WHERE date_start = ?'
           ).bind(date).all();
           existing = (results || []).find(row => normalizeName(row.name) === normName);
+        }
+
+        // Stable provider occurrence IDs survive title changes and venue aliases.
+        if (!existing) {
+          const { results } = await env.DB.prepare("SELECT * FROM events WHERE date_start = ? AND source = 'scraped' AND status != 'rejected'").bind(date).all();
+          const matches = (results || []).filter(row => occurrenceMatch(row, evt));
+          if (matches.length === 1) existing = matches[0];
+          else if (matches.length > 1) {
+            skipped.push({reason:'Multiple matching occurrences need duplicate review',event:evt.name,date});
+            continue;
+          }
         }
 
         // Trumba's RSS category is the occurrence start; legacy imports sometimes

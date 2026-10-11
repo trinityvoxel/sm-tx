@@ -1,3 +1,4 @@
+import Link from "./Link.jsx";
 import React from 'react';
 import health from '../../../shared/collection-health.cjs';
 const { jobHealth, metadata, volumeDrop } = health;
@@ -25,7 +26,7 @@ export default function CollectionHealth({ jobs, jobRuns }) {
             {source.errors?.map((error, i) => <p key={i}>{error}</p>)}
             {!!source.examples?.length && <ul>{source.examples.map((event, i) => <li key={i}>
               {event.date} — {event.name}: missing {event.missing.join(' and ')}.{' '}
-              {/^https?:\/\//i.test(event.url || '') && <a href={event.url} target="_blank" rel="noreferrer">Review source</a>}
+              {/^https?:\/\//i.test(event.url || '') && <Link href={event.url} target="_blank" rel="noreferrer">Review source</Link>}
             </li>)}</ul>}
             {!!source.examples?.length && <p>Showing up to ten examples from this source.</p>}
           </details>;

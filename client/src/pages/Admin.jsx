@@ -1,3 +1,4 @@
+import Link from "../components/Link.jsx";
 import CollectionHealth from '../components/CollectionHealth.jsx';
 import DateReviews from '../components/DateReviews.jsx';
 import React, { useEffect, useRef, useState } from "react";
@@ -478,14 +479,14 @@ function PendingEventCard({ event, onApprove, onReject }) {
               }}
             >
               {eventUrl ? (
-                <a
+                <Link
                   href={eventUrl}
                   target="_blank"
                   rel="noreferrer"
                   style={{ color: "var(--teal)" }}
                 >
                   {eventUrl}
-                </a>
+                </Link>
               ) : (
                 "Not provided"
               )}
@@ -525,12 +526,12 @@ function PendingEventCard({ event, onApprove, onReject }) {
               }}
             >
               {event.submitter_name} ·{" "}
-              <a
+              <Link
                 href={`mailto:${event.submitter_email}`}
                 style={{ color: "var(--teal)" }}
               >
                 {event.submitter_email}
-              </a>
+              </Link>
             </dd>
             <dt style={{ color: "var(--muted)", fontWeight: 600 }}>
               Submitted
@@ -668,14 +669,14 @@ function SubmissionHistory({ submissions }) {
                 >
                   <td style={{ padding: "0.65rem 0.55rem", maxWidth: 260 }}>
                     {submission.event_status === "approved" ? (
-                      <a
+                      <Link
                         href={`/events/${submission.event_id}`}
                         target="_blank"
                         rel="noreferrer"
                         style={{ color: "var(--teal)", fontWeight: 600 }}
                       >
                         {submission.event_name}
-                      </a>
+                      </Link>
                     ) : (
                       <span style={{ fontWeight: 600 }}>
                         {submission.event_name}
@@ -1077,13 +1078,13 @@ function Dashboard({ apiKey, onLogout }) {
                 The homepage photo and booking links point to the approved
                 property listing.
               </p>
-              <a
+              <Link
                 href="https://www.cohostr.com/book/297530"
                 target="_blank"
                 rel="noreferrer"
               >
                 View booking page
-              </a>
+              </Link>
             </Section>
             {/* Facebook Toggle */}
             <Section title="Facebook Scraping">
@@ -1170,14 +1171,14 @@ function Dashboard({ apiKey, onLogout }) {
                             {src.type}
                           </td>
                           <td style={{ padding: "0.5rem" }}>
-                            <a
+                            <Link
                               href={src.url}
                               target="_blank"
                               rel="noreferrer"
                               style={{ color: "var(--teal)" }}
                             >
                               {src.url}
-                            </a>
+                            </Link>
                           </td>
                           <td style={{ padding: "0.5rem" }}>
                             {src.active ? "Yes" : "No"}

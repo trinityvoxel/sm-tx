@@ -1,3 +1,4 @@
+import Link from "./Link.jsx";
 import React from "react";
 import { formatDate } from "../lib/dates.js";
 import { trackEvent } from "../analytics.js";
@@ -23,7 +24,7 @@ export function BookingLink({
   placement = "content",
 }) {
   return (
-    <a
+    <Link
       className={className}
       href={BOOKING}
       rel="sponsored"
@@ -31,7 +32,7 @@ export function BookingLink({
     >
       {children}
       <Arrow />
-    </a>
+    </Link>
   );
 }
 export function Lodging({ compact = false }) {
@@ -76,7 +77,7 @@ export function EventCard({ event: e }) {
       <div className="card-body">
         <p className="eyebrow">{e.categoryLabel}</p>
         <h3>
-          <a href={e.path}>{e.name}</a>
+          <Link href={e.path}>{e.name}</Link>
         </h3>
         <p className="event-time">
           {formatDate(e.date_start, { weekday: "short" })}
@@ -116,12 +117,12 @@ export function EventList({
         {empty} Try another date, browse upcoming events, or share an event with
         the community.
       </p>
-      <a href="/events">
+      <Link href="/events">
         Browse upcoming events <Arrow />
-      </a>
-      <a href="/submit">
+      </Link>
+      <Link href="/submit">
         Submit an event <Arrow />
-      </a>
+      </Link>
     </div>
   );
 }
@@ -139,12 +140,12 @@ export function Breadcrumbs({ items = [] }) {
     <nav className="breadcrumbs" aria-label="Breadcrumb">
       <ol>
         <li>
-          <a href="/">Home</a>
+          <Link href="/">Home</Link>
         </li>
         {items.map(([label, path], i) => (
           <li key={i}>
             {path ? (
-              <a href={path}>{label}</a>
+              <Link href={path}>{label}</Link>
             ) : (
               <span aria-current="page">{label}</span>
             )}
