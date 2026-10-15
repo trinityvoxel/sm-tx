@@ -617,40 +617,9 @@ async function scrapeVisitSanMarcos(browser) {
               j++;
             }
 
-            // Determine the date: for annual events, use the current/next occurrence
-            // If the month is in the past this year, use next year
-            let eventYear = currentYear;
-            const tentativeDate = new Date(currentYear, currentMonth - 1, 1);
-            if (tentativeDate < TODAY) {
-              eventYear = currentYear + 1;
-            }
-
-            // Use the 1st of the month as a placeholder date
-            // This is for recurring annual events without specific dates
-            const isoDate = buildDate(eventYear, currentMonth, 15); // mid-month placeholder
-
-            if (!isWithinLookahead(isoDate)) { i++; continue; }
-
-            // Guess category
-            const category = guessCategory(name, description);
-
-            // Skip lines that are clearly not event names
-            if (name.length < 5 || name.length > 100) { i++; continue; }
-            if (/^[A-Z\s]+$/.test(name) && name.length < 20) { i++; continue; } // all-caps short = probably a section header
-
-            const event = {
-              name: name.slice(0, 150),
-              date_start: isoDate,
-              venue_name: 'Various San Marcos Venues',
-              venue_address: DEFAULT_ADDRESS,
-              category,
-              description: description.trim().slice(0, 500) || undefined,
-              url: url,
-              source: 'scraped',
-            };
-
-            const clean = sanitize(event);
-            if (clean) events.push(clean);
+            // A month heading is not an occurrence date. Never fabricate the 15th
+            // or roll an undated annual listing into next year's calendar.
+            console.warn(`[${SOURCE}] Date review required: ${name} has no explicit occurrence date`);
             i = j;
             continue;
           }
