@@ -59,6 +59,21 @@ jobs:
             node scrape-browser.js
           fi
 
+      - name: Audit published event dates
+        if: always() && github.ref == 'refs/heads/main' && github.event.inputs.dry_run != 'true'
+        env:
+          SM_TX_DATE_AUDIT_PATH: ${{ runner.temp }}/date-audit.json
+        run: node scripts/audit-live-dates.mjs
+
+      - name: Save date audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: date-audit
+          path: ${{ runner.temp }}/date-audit.json
+          retention-days: 14
+          if-no-files-found: ignore
+
       - name: Save collection health report
         if: always()
         uses: actions/upload-artifact@v4

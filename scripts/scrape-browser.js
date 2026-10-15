@@ -4,7 +4,7 @@
 // Sources: taproomsanmarcos.com (Google Calendar iframes), visitsanmarcos.com, downtownSanMarcos.com
 
 const { detailBackfill } = require('../shared/detail-fields.cjs');
-const { calendarDate, instantDate } = require('../shared/event-dates.cjs');
+const { occurrenceDate } = require('../shared/event-dates.cjs');
 const { guessCategory } = require('../shared/category.cjs');
 const { startTime, structuredTime } = require('../shared/schedule.cjs');
 const { chromium } = require('playwright');
@@ -792,7 +792,7 @@ async function scrapeVisitSanMarcosCalendar(browser) {
       const name = String(doc.title || '').trim();
       if (!name || name.length < 3) continue;
 
-      const date_start = calendarDate(doc.date) || instantDate(doc.startDate) || calendarDate(doc.startDate);
+      const date_start = occurrenceDate(doc);
       if (!isWithinLookahead(date_start)) continue;
 
       const categoryText = Array.isArray(doc.categories)

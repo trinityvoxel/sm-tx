@@ -12,15 +12,27 @@ function instantDate(value) {
   if (isNaN(d)) return null;
   return new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Chicago', year:'numeric', month:'2-digit', day:'2-digit' }).format(d);
 }
+// An occurrence field takes precedence over a recurring series start date.
+function occurrenceDate(doc) {
+  const value = doc.date || doc.startDate;
+  return calendarDate(value) || instantDate(value);
+}
 function dateIssue(event) {
   const date = calendarDate(event.date_start);
   if (!date) return 'Invalid calendar date';
   if (String(event.url || '').split(/[?#]/)[0] === 'https://www.tantrasanmarcos.com/event-info/bluegrass-night-2024-06-12-19-30' && date !== '2024-06-12') return 'Source is a dated June 12, 2024 event page; a current occurrence source is required';
+  // Publisher-confirmed venue-specific schedule; never infer dates from this rule.
+  if (/^Lucky Guess Trivia$/i.test(event.name || '') && /sean\s*patrick/i.test(event.venue_name || '') && new Date(date+'T12:00:00Z').getUTCDay() !== 3)
+    return 'Date conflicts with publisher-confirmed Wednesday schedule for Lucky Guess Trivia at Sean Patrick’s; verify before approval';
   const titleMatch = String(event.name || '').match(/\b(first|second|third|fourth|fifth|last)\s+(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\b/i);
   const descriptionMatch = String(event.description || '').match(/\b(?:every|each)\s+((?:first|second|third|fourth|fifth|last)\s+(?:Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday))\b/i);
   const match = titleMatch || (descriptionMatch && descriptionMatch[1].match(/(first|second|third|fourth|fifth|last)\s+(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)/i));
   if (!match) {
-    const weekly = String(event.description || '').match(/\b(?:every|each)\s+(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\b/i);
+    const weekly = String(event.description || '').match(/\b(?:every|each)\s+(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)s?\b/i)
+      || String(event.name || '').match(/\b(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)s\b/i);
+    // Multiple weekday schedules need source review, not a single-day assumption.
+    const mentioned = [...String(event.description || '').matchAll(/\b(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)s?\b/gi)].map(m=>m[1].toLowerCase());
+    if (new Set(mentioned).size > 1) return null;
     if (weekly) {
       const actual = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date(date+'T12:00:00Z').getUTCDay()];
       if (actual.toLowerCase() !== weekly[1].toLowerCase()) return `Date ${date} conflicts with source recurrence “${weekly[0]}”; verify before approval`;
@@ -34,4 +46,4 @@ function dateIssue(event) {
   const ordinalMatches = ordinal ? Math.ceil(day.getUTCDate()/7) === ordinal : nextWeek.getUTCMonth() !== day.getUTCMonth();
   return day.getUTCDay() !== weekday || !ordinalMatches ? `Date ${date} conflicts with ${titleMatch ? 'title' : 'source'} recurrence “${match[0]}”; verify an organizer exception before approval` : null;
 }
-module.exports = { calendarDate, instantDate, dateIssue };
+module.exports = { calendarDate, instantDate, occurrenceDate, dateIssue };
