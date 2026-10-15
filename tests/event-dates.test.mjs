@@ -51,3 +51,11 @@ test('occurrence timestamps use Central time and never fall back to a series sta
  assert.equal(execFileSync(process.execPath,['-e',code],{cwd:new URL('../',import.meta.url),env:{...process.env,TZ}}).toString().trim(),'2026-10-21 2026-11-04 2026-10-21 null');
  }
 });
+
+test('Laughing Dead open mic is Tuesday even without weekday prose; showcase remains separate',()=>{
+ const e={name:'Laughing Dead Comedy Open Mic',venue_name:'San Marcos',description:'Check out this weekly comedy open mic hosted at Wake the Dead Coffee House!'};
+ assert.match(dates.dateIssue({...e,date_start:'2026-10-21'}),/Tuesday/);
+ assert.equal(dates.dateIssue({...e,date_start:'2026-10-20'}),null);
+ assert.equal(dates.dateIssue({...e,description:'A different venue',date_start:'2026-10-21'}),null);
+ assert.equal(dates.dateIssue({name:'The Laughing Dead StandUp Comedy Showcase',description:'At Wake the Dead EVERY THIRD SATURDAY.',date_start:'2026-10-17'}),null);
+});

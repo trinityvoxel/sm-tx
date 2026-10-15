@@ -24,6 +24,10 @@ function dateIssue(event) {
   // Publisher-confirmed venue-specific schedule; never infer dates from this rule.
   if (/^Lucky Guess Trivia$/i.test(event.name || '') && /sean\s*patrick/i.test(event.venue_name || '') && new Date(date+'T12:00:00Z').getUTCDay() !== 3)
     return 'Date conflicts with publisher-confirmed Wednesday schedule for Lucky Guess Trivia at Sean Patrick’s; verify before approval';
+  if (/^Laughing Dead Comedy Open Mic$/i.test(event.name || '')
+      && /wake\s*(?:the\s*)?dead/i.test([event.venue_name,event.description,event.url].join(' '))
+      && new Date(date+'T12:00:00Z').getUTCDay() !== 2)
+    return 'Date conflicts with publisher-confirmed Tuesday schedule for Laughing Dead Comedy Open Mic at Wake the Dead Coffee House; verify before approval';
   const titleMatch = String(event.name || '').match(/\b(first|second|third|fourth|fifth|last)\s+(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\b/i);
   const descriptionMatch = String(event.description || '').match(/\b(?:every|each)\s+((?:first|second|third|fourth|fifth|last)\s+(?:Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday))\b/i);
   const match = titleMatch || (descriptionMatch && descriptionMatch[1].match(/(first|second|third|fourth|fifth|last)\s+(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)/i));
