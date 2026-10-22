@@ -570,3 +570,15 @@ test('changed promotional title with the same provider occurrence updates instea
  assert.equal(DB.sql.prepare('SELECT count(*) n FROM events').get().n,1);
  assert.equal(DB.sql.prepare('SELECT id FROM events').get().id,original);
 });
+
+test('homepage, filters, pagination and today reuse published discovery data without caching private fields',async()=>{
+ const DB=database();DB.sql.exec("INSERT INTO events(id,source,status,name,date_start,venue_name,venue_address,category,submitter_email,created_at,updated_at) VALUES('cache-public','scraped','approved','Public fixture','2026-09-25','Venue','Address','music','private@example.com','2026-09-25','2026-09-25'),('cache-pending','community','pending','Private pending','2026-09-25','Venue','Address','music','secret@example.com','2026-09-25','2026-09-25')");
+ const saved=new Map();const cache={match:async k=>saved.get(k.url)?.clone(),put:async(k,v)=>saved.set(k.url,v.clone())};
+ let queries=0;const prepare=DB.prepare;DB.prepare=q=>{queries++;return prepare(q)};
+ const env={DB,PUBLIC_DISCOVERY_CACHE:cache};
+ const home=await loadModel(new URL('https://sm-tx.com/'),env);const firstReads=queries;
+ await loadModel(new URL('https://sm-tx.com/events?category=music'),env);
+ await loadModel(new URL('https://sm-tx.com/events/today'),env);
+ assert.equal(queries,firstReads);assert.equal(home.total,1);
+ const stored=await [...saved.values()][0].clone().text();assert.doesNotMatch(stored,/private@example|secret@example|cache-pending/);
+});

@@ -1,3 +1,4 @@
+import {cachedDiscovery} from './discovery-cache.js';
 import {
   today,
   weekend,
@@ -35,6 +36,11 @@ export async function readEvents(db, where = "1=1", bindings = [], index = "") {
     throw error;
   }
   return response.results || [];
+}
+function readDiscoveryRange(db, range) {
+  return readEvents(db,
+    "date_start <= ? AND COALESCE(NULLIF(date_end,''),date_start) >= ?",
+    [range.to, range.from], "idx_events_effective_end");
 }
 export function publicEvent(e) {
   return {
@@ -157,15 +163,15 @@ export async function loadModel(url, env, now = new Date()) {
     }
     if (validDate(query.get("date")))
       range = { from: query.get("date"), to: query.get("date") };
-    let raw = await attachEditorial(
+    // Filters, pagination, today and weekend reuse one published date window.
+    // Calendar months outside that window have their own bounded cache entry.
+    const sharedRange = range.from >= day && range.to <= addDays(day, 90)
+      ? {from: day, to: addDays(day, 90)} : range;
+    let raw = await cachedDiscovery(sharedRange, async () => attachEditorial(
       env.DB,
-      await readEvents(
-        env.DB,
-        "date_start <= ? AND COALESCE(NULLIF(date_end,''),date_start) >= ?",
-        [range.to, range.from],
-        "idx_events_effective_end",
-      ),
-    );
+      await readDiscoveryRange(env.DB, sharedRange),
+    ), env.PUBLIC_DISCOVERY_CACHE);
+    raw = raw.filter(e => e.date_start <= range.to && (e.date_end || e.date_start) >= range.from);
     raw = raw.filter((e) => validDate(e.date_start) && isListed(e));
     const filters = {
       q: (query.get("q") || "").slice(0, 100),
