@@ -5,6 +5,7 @@
  * No AI required. Pure fetch + parse.
  */
 
+const {parseMarcEvents}=require('../shared/marc-events.cjs');
 const { parseCityCalendar } = require('../shared/city-calendar.cjs');
 const { parseTXSTItem } = require('../shared/txst.cjs');
 const { retryRead, collectSource, finishRun, postReport } = require('./collection-runtime.cjs');
@@ -168,6 +169,8 @@ async function scrapeTheMarc() {
   console.log('[Marc] Fetching themarcsm.com...');
   try {
     const { body } = await fetchUrl('https://themarcsm.com/');
+    const modern=parseMarcEvents(body).filter(e=>isUpcoming(e.date_start));
+    if(modern.length) return modern;
     // Spacecrafted CMS embeds event data directly in homepage HTML
     const nameMatches = [...body.matchAll(/<h2 class="eventColl-eventInfo"><a href="([^"]+)">([^<]+)<\/a>/gi)];
     const monthMatches = [...body.matchAll(/<span class="eventColl-month">([^<]+)<\/span>/gi)];

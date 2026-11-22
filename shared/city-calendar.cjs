@@ -59,6 +59,22 @@ function parseCityCalendar(html) {
       source: "scraped",
     });
   }
+  // CivicPlus redesign groups cards beneath an explicit ISO date heading.
+  for(const section of html.split(/aria-labelledby=["']calendar-events-header-/i).slice(1)) {
+    const date=section.match(/^(\d{4}-\d{2}-\d{2})["']/)?.[1];
+    if(!date)continue;
+    for(const match of section.matchAll(/<li\b[^>]*id=["']event-\d+["'][^>]*>([\s\S]*?)<\/li>/gi)) {
+      const block=match[1];
+      const link=block.match(/<a\b[^>]*href=["'](\/m\/calendar\/event\/detail\/\d+)["'][^>]*>([\s\S]*?)<\/a>/i);
+      if(!link)continue;
+      const name=plain(link[2]);
+      const details=block.slice(block.indexOf('class="events-category"'));
+      const time=plain(details).match(/\b(\d{1,2}:\d{2}\s*[AP]M)\s*[-–]/i)?.[1]||null;
+      const venue=plain(block.match(/class=["']calendar-location-content["'][^>]*>([\s\S]*?)<\/div>/i)?.[1]);
+      const description=plain(block.match(/class=["']redesign-text[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1]);
+      events.push({name,date_start:date,time,venue_name:venue||'Venue not listed',venue_address:null,description:description||null,url:'https://www.sanmarcostx.gov'+link[1],category:/pickleball|basketball|volleyball|soccer|tennis/i.test(name)?'sports':'community',cost:null,kid_friendly:null,source:'scraped'});
+    }
+  }
   return events;
 }
 module.exports = { parseCityCalendar };
