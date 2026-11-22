@@ -1016,6 +1016,11 @@ async function scrapeVisitSMListenLive(_browser) {
           reject(new Error(`Redirect to ${res.headers.location} — update URL`));
           return;
         }
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          res.resume();
+          reject(new Error(`Source HTTP ${res.statusCode}: Live This Week could not be retrieved`));
+          return;
+        }
         let data = '';
         res.on('data', chunk => data += chunk);
         res.on('end', () => resolve(data));
